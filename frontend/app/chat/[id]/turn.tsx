@@ -1,9 +1,12 @@
+import { ChartView } from "./chart";
+
 export type Turn = {
   id: number;
   question: string;
   asOfDate: string;
   steps: string[]; // progress messages in arrival order
   queries: { subQuestion: string; sql: string }[];
+  charts?: unknown[]; // Chart Specs, only from the final answer event
   text: string; // streamed token by token, replaced by the final Answer text
   status: "running" | "done" | "error";
   error?: string;
@@ -32,6 +35,7 @@ export function TurnView({ turn }: { turn: Turn }) {
         </details>
       ))}
       {turn.text && <p className="whitespace-pre-wrap rounded border border-zinc-300 px-3 py-2">{turn.text}</p>}
+      {turn.charts?.map((spec, i) => <ChartView key={i} spec={spec} />)}
       {turn.status === "error" && (
         <p role="alert" className="text-red-600">
           {turn.error}
