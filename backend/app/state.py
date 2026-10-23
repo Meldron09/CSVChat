@@ -27,7 +27,7 @@ class DatasetInfo(TypedDict):
     """What every agent prompt needs about the Chat."""
 
     question: str
-    as_of_date: str  # ISO date; all relative dates resolve against it
+    as_of_date: str  # ISO date, "" when the user gave none; all relative dates resolve against it
     dataset_notes: str | None
     schema_profile: str  # schema_profile.render_for_prompt(...)
 
@@ -47,6 +47,7 @@ class AnalystResult(TypedDict):
 
 class State(DatasetInfo):
     sub_questions: list[str]  # written by the Orchestrator
+    direct_reply: str  # written by the Orchestrator instead of sub_questions: answer now, no analysts or Synthesizer
     results: Annotated[list[AnalystResult], operator.add]  # appended by each SQL Analyst
     charts: Annotated[list[dict], operator.add]  # Chart Specs; appended by the Chart Builder (not built yet)
     answer: str  # written by the Synthesizer

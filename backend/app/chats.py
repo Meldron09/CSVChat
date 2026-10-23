@@ -86,3 +86,12 @@ def save_ingestion(settings: Settings, chat_id: uuid.UUID, reports: list[dict], 
 def save_profile(settings: Settings, chat_id: uuid.UUID, profile: dict) -> None:
     with psycopg.connect(settings.owner_dsn) as conn:
         conn.execute("UPDATE app.chats SET schema_profile = %s WHERE id = %s", (Jsonb(profile), chat_id))
+
+
+def update_chat(settings: Settings, chat_id: uuid.UUID, fields: dict) -> None:
+    """Set Dataset Notes and/or As-of Date (keys of `fields`; None clears)."""
+    assert fields.keys() <= {"dataset_notes", "as_of_date"}
+    if fields:
+        assignments = sql.SQL(", ").join(sql.SQL("{} = {}").format(sql.Identifier(k), sql.Placeholder(k)) for k in fields)
+        with psycopg.connect(settings.owner_dsn) as conn:
+            conn.execute(sql.SQL("UPDATE app.chats SET {} WHERE id = {}").format(assignments, sql.Placeholder("id")), {**fields, "id": chat_id})

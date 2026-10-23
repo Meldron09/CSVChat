@@ -120,6 +120,6 @@ def test_unknown_chat_is_404(client, chat):
     assert client.post(f"/chats/{chat}/messages", json={"question": "hi", "as_of_date": "2024-11-04"}).status_code == 404
 
 
-@pytest.mark.parametrize("body", [{"question": "hi"}, {"question": "hi", "as_of_date": "yesterday"}, {"question": "", "as_of_date": "2024-11-04"}])
+@pytest.mark.parametrize("body", [{"as_of_date": "2024-11-04"}, {"question": "hi", "as_of_date": "yesterday"}, {"question": "", "as_of_date": "2024-11-04"}])
 def test_invalid_message_body_is_422(client, chat_id, body):
     assert client.post(f"/chats/{chat_id}/messages", json=body).status_code == 422

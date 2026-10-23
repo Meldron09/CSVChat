@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useEffect, useState, type ReactNode } from "react";
 import type { ChatEvent } from "@/lib/api";
 import { readSse } from "@/lib/sse";
 import { TurnView, type Turn } from "./turn";
@@ -11,14 +11,29 @@ function today() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** Lets the upload panel (a child) set the As-of Date, e.g. when the sample dataset loads. */
+export const SetAsOfDate = createContext<(date: string) => void>(() => {});
+
 /** Header (with the As-of Date), `children` (the upload panel), transcript of this page session, and message box. */
-export function ChatPanel({ chatId, children }: { chatId: string; children: ReactNode }) {
-  const [asOfDate, setAsOfDate] = useState(""); // filled after mount: the server doesn't know the browser's today
+export function ChatPanel({ chatId, savedAsOf, children }: { chatId: string; savedAsOf: string | null; children: ReactNode }) {
+  const [asOfDate, setAsOfDateState] = useState(savedAsOf ?? ""); // else filled after mount: the server doesn't know the browser's today
   const [question, setQuestion] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
   const busy = turns.some((t) => t.status === "running");
 
-  useEffect(() => setAsOfDate(today()), []);
+  // Edits are saved on the Chat too (blank clears it); every message still carries the date.
+  const setAsOfDate = (date: string) => {
+    setAsOfDateState(date);
+    fetch(`/api/chats/${chatId}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ as_of_date: date || null }),
+    }).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!savedAsOf) setAsOfDateState(today());
+  }, [savedAsOf]);
 
   const update = (id: number, change: (t: Turn) => Partial<Turn>) =>
     setTurns((all) => all.map((t) => (t.id === id ? { ...t, ...change(t) } : t)));
@@ -72,7 +87,7 @@ export function ChatPanel({ chatId, children }: { chatId: string; children: Reac
           />
         </label>
       </header>
-      {children}
+      <SetAsOfDate value={setAsOfDate}>{children}</SetAsOfDate>
       <section className="mt-8 flex flex-col gap-6" aria-label="Transcript">
         {turns.map((t) => (
           <TurnView key={t.id} turn={t} />
@@ -95,7 +110,7 @@ export function ChatPanel({ chatId, children }: { chatId: string; children: Reac
         />
         <button
           type="submit"
-          disabled={busy || !asOfDate || !question.trim()}
+          disabled={busy || !question.trim()} // a blank As-of Date is allowed: the Orchestrator asks for it
           className="rounded bg-zinc-900 px-4 py-2 text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
         >
           {busy ? "Working…" : "Ask"}

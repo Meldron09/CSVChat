@@ -33,6 +33,7 @@ services:
       UPLOAD_DIR: /data/uploads
     volumes:
       - uploads:/data/uploads
+      - ./sample-data:/sample-data:ro # the bundled Online Shop CSVs behind POST /chats/{id}/sample
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

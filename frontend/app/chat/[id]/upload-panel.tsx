@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useContext, useState } from "react";
 import type { CleaningReport, SchemaProfile } from "@/lib/api";
+import { SetAsOfDate } from "./chat-panel";
+import { NotesEditor } from "./notes-editor";
 
 export function UploadPanel({
   chatId,
@@ -17,20 +19,26 @@ export function UploadPanel({
   const [reports, setReports] = useState(initialReports);
   const [profile, setProfile] = useState(initialProfile);
   const [notes, setNotes] = useState(initialNotes);
+  const setAsOfDate = useContext(SetAsOfDate);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function upload(form: HTMLFormElement) {
+  /** POST to the Chat (the form's files, or the bundled sample) and show the new Cleaning Reports and Relationships. */
+  async function send(path: string, body?: FormData, form?: HTMLFormElement) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/chats/${chatId}/files`, { method: "POST", body: new FormData(form) });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.detail ?? `Upload failed (${res.status})`);
-      const fresh: CleaningReport[] = body.reports;
-      setProfile(body.schema_profile);
+      const res = await fetch(`/api/chats/${chatId}/${path}`, { method: "POST", body });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(json?.detail ?? `Upload failed (${res.status})`);
+      const fresh: CleaningReport[] = json.reports;
+      setProfile(json.schema_profile);
       setReports((old) => [...old.filter((r) => !fresh.some((f) => f.table === r.table)), ...fresh]);
-      (form.elements.namedItem("files") as HTMLInputElement).value = "";
+      if (form) (form.elements.namedItem("files") as HTMLInputElement).value = "";
+      if (path === "sample") {
+        setNotes(json.dataset_notes);
+        setAsOfDate(json.as_of_date);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -38,31 +46,31 @@ export function UploadPanel({
     }
   }
 
+  const loadSample = () => send("sample");
+
   return (
     <section className="mt-8">
       <form
         className="flex flex-col gap-3"
         onSubmit={(e) => {
           e.preventDefault();
-          upload(e.currentTarget);
+          send("files", new FormData(e.currentTarget), e.currentTarget);
         }}
       >
-        <input type="file" name="files" accept=".csv" multiple required disabled={busy} />
-        <textarea
-          name="dataset_notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Dataset Notes (optional): business definitions the analysis must follow, e.g. what counts as revenue"
-          className="min-h-20 rounded border border-zinc-400 p-2 text-sm"
-          disabled={busy}
-        />
-        <button
-          type="submit"
-          disabled={busy}
-          className="self-start rounded bg-zinc-900 px-4 py-2 text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
-        >
-          {busy ? "Cleaning and loading…" : "Upload CSVs"}
-        </button>
+        <input type="file" name="files" accept=".csv" multiple required disabled={busy} aria-label="CSV files" />
+        <NotesEditor chatId={chatId} notes={notes} setNotes={setNotes} disabled={busy} />
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded bg-zinc-900 px-4 py-2 text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
+          >
+            {busy ? "Cleaning and loading…" : "Upload CSVs"}
+          </button>
+          <button type="button" onClick={loadSample} disabled={busy} className="rounded border border-zinc-400 px-4 py-2 disabled:opacity-60">
+            Load sample dataset
+          </button>
+        </div>
       </form>
       {busy && <p role="status" className="mt-3 text-sm text-zinc-500">Ingesting files, this can take a while for large CSVs.</p>}
       {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}

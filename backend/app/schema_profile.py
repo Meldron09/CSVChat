@@ -134,10 +134,13 @@ def _infer_relationships(conn: psycopg.Connection, schema: str, tables: list[dic
     return relationships
 
 
+NO_TABLES = "No tables uploaded."
+
+
 def render_for_prompt(profile: dict | None) -> str:
     """Compact text form of a Schema Profile for agent prompts."""
     if not profile or not profile["tables"]:
-        return "No tables uploaded."
+        return NO_TABLES
     lines = []
     for t in profile["tables"]:
         lines.append(f"Table {t['name']} ({t['row_count']} rows)")
