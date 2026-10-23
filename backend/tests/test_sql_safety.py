@@ -4,6 +4,8 @@ Ordinary database errors are retried (twice) with the error fed back; guard reje
 timeouts are terminal `error` events. Either way the Chat's data is never changed."""
 
 import dataclasses
+import threading
+import time
 
 import psycopg
 import pytest
@@ -108,3 +110,32 @@ def test_adversarial_sql_gives_a_terminal_error_event_and_leaves_data_unchanged(
     assert frames[-1].startswith("event: error") and "event: answer" not in res.text
     assert len(fake_model.prompts("sql_analyst")) == 1 and fake_model.prompts("synthesizer") == []
     assert_orders_untouched(settings, loaded_chat)
+
+
+def test_a_rejected_query_still_records_the_turn_with_its_sibling_analysts_and_the_thread_stays_usable(settings, loaded_chat, client, ask, fake_model):
+    parts = ["Drop it?", "How many orders?"]
+    sqls = {parts[0]: "DROP TABLE orders", parts[1]: "SELECT count(*) AS n FROM orders"}
+    both_started = threading.Barrier(2, timeout=10)
+
+    def analyst(messages):
+        sub_question = messages[-1].content
+        both_started.wait()
+        if sub_question == parts[0]:
+            time.sleep(0.3)  # the sibling's query is reported before this one is rejected
+        return {"sql": sqls[sub_question]}
+
+    fake_model.script("orchestrator", {"sub_questions": parts}).script("sql_analyst", analyst, analyst)
+    events = ask(loaded_chat, "drop it and count")
+    assert names(events)[-1] == "error" and "Only SELECT/WITH" in events[-1][1]["message"] and "answer" not in names(events)
+
+    (turn,) = client.get(f"/chats/{loaded_chat}").json()["transcript"]  # the turn is not lost
+    assert turn["question"] == "drop it and count" and turn["answer"] == "" and "Only SELECT/WITH" in turn["error"]
+    assert {q["task"]: q["sql"] for q in turn["queries"]} == {0: sqls[parts[0]], 1: sqls[parts[1]]}  # both analysts are visible
+    assert_orders_untouched(settings, loaded_chat)
+
+    script_happy_path(fake_model, sql="SELECT count(*) AS n FROM orders")
+    assert names(ask(loaded_chat, "how many orders"))[-1] == "answer"
+    assert [t["question"] for t in client.get(f"/chats/{loaded_chat}").json()["transcript"]] == [
+        "drop it and count", "how many orders"
+    ]
+

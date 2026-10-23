@@ -60,6 +60,7 @@ def orchestrator(state: State, runtime: Runtime[Context]) -> dict:
         return {"direct_reply": plan.direct_reply, "history": history}
     if not plan.sub_questions:
         raise ValueError("The Orchestrator returned neither sub-questions nor a direct reply")
-    if len(plan.sub_questions) > MAX_SUB_QUESTIONS:  # truncate rather than fail: the model may overshoot
+    kept, dropped = plan.sub_questions[:MAX_SUB_QUESTIONS], plan.sub_questions[MAX_SUB_QUESTIONS:]
+    if dropped:  # truncate rather than fail (the model may overshoot), but the Synthesizer must tell the user what was left out
         emit("step", node="orchestrator", message=f"The question has {len(plan.sub_questions)} parts; answering the first {MAX_SUB_QUESTIONS}")
-    return {"sub_questions": plan.sub_questions[:MAX_SUB_QUESTIONS], "history": history}
+    return {"sub_questions": kept, "dropped_sub_questions": dropped, "history": history}

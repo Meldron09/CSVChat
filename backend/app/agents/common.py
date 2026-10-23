@@ -49,6 +49,9 @@ def render_history(turns: list[Turn]) -> str:
     """The last HISTORY_TURNS turns as prompt text: question, SQL run and answer text. Chart Specs are left out on purpose."""
     parts = []
     for i, t in enumerate(turns[-HISTORY_TURNS:], 1):
+        if t.get("error"):  # a failed turn is remembered only as a marker: its partial SQL and the error text stay out of the prompts
+            parts.append(f"Turn {i}\nQuestion: {t['question']}\nAnswer: (this question failed and was not answered)")
+            continue
         sqls = "".join(f"\n  {q['sql']}" + (f"   -- failed: {q['error']}" if q.get("error") else "") for q in t["queries"]) or " (none)"
         parts.append(f"Turn {i}\nQuestion: {t['question']}\nSQL run:{sqls}\nAnswer: {t['answer']}")
     return "\n\n".join(parts)

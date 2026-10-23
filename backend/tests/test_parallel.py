@@ -123,3 +123,28 @@ def test_one_part_failing_after_retries_still_gives_a_normal_answer_that_reports
     assert PARTS[0] in failed_block and 'column "revenue" does not exist' in failed_block and PARTS[1] not in failed_block
     ok_block = prompt.split("Query results:\n")[1].split("Failed parts:")[0]
     assert f'"sub_question": "{PARTS[1]}"' in ok_block and "[[2]]" in ok_block and PARTS[0] not in ok_block
+
+
+def test_parts_dropped_by_the_fan_out_cap_are_reported_in_the_answer(loaded_chat, ask, fake_model):
+    fake_model.script("orchestrator", {"sub_questions": [f"Part {i}?" for i in range(6)]})
+    for _ in range(4):
+        fake_model.script("sql_analyst", {"sql": "SELECT 1 AS one"})
+    fake_model.script("synthesizer", "Parts 0 to 3 are answered with the number 1.")  # the model says nothing about the rest
+    events = ask(loaded_chat, "six things at once")
+
+    assert_valid_stream(events)
+    prompt = fake_model.prompt_text("synthesizer")  # the Synthesizer is told which parts have no results
+    unanswered = prompt.split("NOT analysed")[1].split("Say plainly")[0]
+    assert "- Part 4?" in unanswered and "- Part 5?" in unanswered and "Part 3?" not in unanswered
+    text = events[-1][1]["text"]
+    assert "Not answered" in text and "Part 4?" in text and "Part 5?" in text  # and the Answer says so even if the model did not
+    assert "".join(d["text"] for e, d in events if e == "token") == text
+
+
+def test_a_model_that_already_reports_the_dropped_parts_is_not_repeated(loaded_chat, ask, fake_model):
+    fake_model.script("orchestrator", {"sub_questions": [f"Part {i}?" for i in range(5)]})
+    for _ in range(4):
+        fake_model.script("sql_analyst", {"sql": "SELECT 1 AS one"})
+    fake_model.script("synthesizer", "As of 2024-11-04, parts 0-3 gave 1. Part 4 could not be answered here; ask it separately.")
+    text = ask(loaded_chat, "five things")[-1][1]["text"]
+    assert "Not answered" not in text and text.count("Part 4") == 1

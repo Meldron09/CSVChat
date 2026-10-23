@@ -51,8 +51,9 @@ class Turn(TypedDict):
     question: str
     as_of_date: str
     queries: list[QueryRecord]
-    answer: str
+    answer: str  # "" for a failed turn
     charts: list[ChartSpecData]
+    error: str | None  # set when the turn failed (it also ended in an `error` event): no answer; `queries` are the SQL seen so far
 
 
 class DatasetInfo(TypedDict):
@@ -89,6 +90,7 @@ class State(DatasetInfo):
     turns: Annotated[list[Turn], operator.add]  # the transcript: persists across runs, appended by `record_turn`
     # Everything below is per-turn and reset by `turn_input`.
     sub_questions: list[str]  # written by the Orchestrator
+    dropped_sub_questions: list[str]  # parts of the plan beyond MAX_SUB_QUESTIONS that no analyst will answer; the Answer must say so
     direct_reply: str  # written by the Orchestrator instead of sub_questions: answer now, no analysts or Synthesizer
     results: Annotated[list[AnalystResult], add_or_reset]  # appended by each SQL Analyst
     charts: Annotated[list[ChartSpecData], add_or_reset]  # validated Chart Specs (app/chart_spec.py), from the Chart Builder
@@ -102,6 +104,7 @@ def turn_input(info: DatasetInfo) -> dict:
         **info,
         "history": "",
         "sub_questions": [],
+        "dropped_sub_questions": [],
         "direct_reply": "",
         "results": None,
         "charts": None,

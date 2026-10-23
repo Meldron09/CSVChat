@@ -103,7 +103,7 @@ def test_direct_replies_are_recorded_and_remembered(client, chat_id, ask, fake_m
     assert [t["question"] for t in client.get(f"/chats/{chat_id}").json()["transcript"]] == ["What is revenue?", "Total revenue please"]
 
 
-def test_a_failed_turn_is_not_recorded_and_leaves_the_thread_usable(loaded_chat, client, ask, fake_model):
+def test_a_failed_turn_is_recorded_with_its_error_and_leaves_the_thread_usable(loaded_chat, client, ask, fake_model):
     script_turn(fake_model, answer="Total revenue is 60.75.")
     ask(loaded_chat, "first question")
 
@@ -112,9 +112,16 @@ def test_a_failed_turn_is_not_recorded_and_leaves_the_thread_usable(loaded_chat,
     fake_model.script("sql_analyst", {"sql": MONTHLY})
     fake_model.script("chart_builder", {"charts": [bar(title=TITLE)]})
     fake_model.script("synthesizer", RuntimeError("model fell over"))
-    events = ask(loaded_chat, "doomed question")
+    events = ask(loaded_chat, "doomed question", as_of_date="2024-05-01")
     assert names(events)[-1] == "error" and "model fell over" in events[-1][1]["message"]
-    assert [t["question"] for t in client.get(f"/chats/{loaded_chat}").json()["transcript"]] == ["first question"]
+
+    # the question and the error text survive a reload, as a failed turn without an answer or charts
+    transcript = client.get(f"/chats/{loaded_chat}").json()["transcript"]
+    assert [t["question"] for t in transcript] == ["first question", "doomed question"]
+    failed = transcript[1]
+    assert failed["error"] == "model fell over" and failed["answer"] == "" and failed["charts"] == []
+    assert failed["as_of_date"] == "2024-05-01" and [q["sql"] for q in failed["queries"]] == [MONTHLY]
+    assert transcript[0]["error"] is None
 
     fake_model.script("orchestrator", {"sub_questions": ["How many orders?"]})
     fake_model.script("sql_analyst", {"sql": "SELECT count(*) AS n FROM orders"})
@@ -124,6 +131,10 @@ def test_a_failed_turn_is_not_recorded_and_leaves_the_thread_usable(loaded_chat,
     answer = events[-1][1]
     assert answer["charts"] == [] and "There are 3 orders." in answer["text"]  # the doomed turn's chart did not leak
     transcript = client.get(f"/chats/{loaded_chat}").json()["transcript"]
-    assert [t["question"] for t in transcript] == ["first question", "third question"]
-    assert [q["sql"] for q in transcript[1]["queries"]] == ["SELECT count(*) AS n FROM orders"]
-    assert "doomed question" not in fake_model.prompt_text("orchestrator")
+    assert [t["question"] for t in transcript] == ["first question", "doomed question", "third question"]
+    assert [q["sql"] for q in transcript[2]["queries"]] == ["SELECT count(*) AS n FROM orders"]
+    # the model remembers that the doomed question failed, but none of its partial SQL, the error text or its chart
+    for role in ("orchestrator", "sql_analyst", "synthesizer"):
+        prompt = fake_model.prompt_text(role)
+        assert "doomed question" in prompt and "(this question failed and was not answered)" in prompt, role
+        assert MONTHLY not in prompt and "model fell over" not in prompt and TITLE not in prompt, role
