@@ -5,7 +5,7 @@ from datetime import date
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app import chats, schema_profile
 from app.events import format_sse
@@ -19,7 +19,12 @@ log = logging.getLogger(__name__)
 
 class MessageIn(BaseModel):
     question: str = Field(min_length=1)
-    as_of_date: date  # sent with every message; the Chat's "today"
+    as_of_date: date | None = None  # sent with every message; the Chat's "today". Blank/missing: the Orchestrator asks for it
+
+    @field_validator("as_of_date", mode="before")
+    @classmethod
+    def blank_is_missing(cls, v):
+        return None if isinstance(v, str) and not v.strip() else v
 
 
 @router.post("/chats/{chat_id}/messages")
@@ -30,7 +35,7 @@ def post_message(chat_id: str, body: MessageIn, request: Request):
         raise HTTPException(404, "Chat not found")
     state = {
         "question": body.question,
-        "as_of_date": body.as_of_date.isoformat(),
+        "as_of_date": body.as_of_date.isoformat() if body.as_of_date else "",
         "dataset_notes": chat["dataset_notes"],
         "schema_profile": schema_profile.render_for_prompt(chat["schema_profile"]),
     }

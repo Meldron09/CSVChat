@@ -51,7 +51,7 @@ export type ChatEvent =
   | { event: "step"; data: { node: string; message: string; task?: number } } // task: 0-based parallel SQL Analyst index
   | { event: "sql"; data: { task: number; sub_question: string; sql: string } }
   | { event: "token"; data: { text: string } }
-  | { event: "answer"; data: { text: string; as_of_date: string; charts: unknown[] } }
+  | { event: "answer"; data: { text: string; as_of_date: string | null; charts: unknown[] } }
   | { event: "error"; data: { message: string } };
 
 export async function createChat(): Promise<{ id: string }> {

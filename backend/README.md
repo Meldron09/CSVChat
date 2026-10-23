@@ -51,6 +51,13 @@ The graph (`app/graph.py`) is Orchestrator, SQL Analyst (one per sub-question vi
 
 SQL failures: an ordinary database error (syntax, unknown column or table, bad cast; also SQL sqlglot cannot parse) is fed back to the model and the query retried, at most 2 times per sub-question (the retry state is local to each SQL Analyst call, so parallel analysts are independent); if it still fails the result carries `error`, and the Synthesizer reports that part plainly (when every part failed it answers without calling the model). Adversarial or forbidden SQL is never retried: guard rejections (`DROP`, multiple statements, writes), `permission denied` (other Chats' schemas, `app`, `checkpoints`) and the 10s statement timeout are terminal and end the stream with an `error` event; data is unchanged because the Chat's role is read-only. Results are capped at 1,000 rows (`sql_guard.MAX_ROWS`, read through a server-side cursor); a truncated result is flagged to the Synthesizer and the Answer always says so.
 
+**Direct replies.** Some questions get a plain reply with no analysts, Synthesizer or `sql` events (still `step`, streamed `token`s, then `answer` with `charts: []`): no Tables uploaded ("upload data first") and a blank/missing `as_of_date` ("set the As-of Date") are decided in code in `agents/orchestrator.py` before any model call; "can't be answered from this data" is the Orchestrator model setting `Plan.direct_reply`. `graph.route` sends these to the `direct_reply` node.
+
+## Sample dataset, Dataset Notes, As-of Date
+
+- `POST /chats/{id}/sample` ingests the 8 Online Shop 2024 CSVs from `sample-data/` (tracked in git, 3MB; the original `Online Shop 2024/` folder is gitignored; compose mounts it at `/sample-data`), stores the sample Dataset Notes and As-of Date 2024-11-04 (both in `app/sample.py`) and returns `{reports, schema_profile, dataset_notes, as_of_date}`.
+- `PUT /chats/{id}` with `{"dataset_notes"?: str|null, "as_of_date"?: "YYYY-MM-DD"|null}` updates only the fields sent and returns the Chat like `GET`. The next message reads the stored notes, so edits apply to later answers.
+
 ## Scripted fake model (tests)
 
 `tests/fake_model.py:FakeChatModel` replaces the LLM; the `fake_model` fixture (conftest) is injected through `create_app(model_factory=...)` into the `client` fixture, and `ask(chat_id, question, as_of_date="2024-11-04")` returns the parsed SSE events.

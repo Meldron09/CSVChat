@@ -11,7 +11,7 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
   if (!chat) notFound();
   return (
     <main className="mx-auto w-full max-w-3xl p-8">
-      <ChatPanel chatId={chat.id}>
+      <ChatPanel chatId={chat.id} savedAsOf={chat.as_of_date}>
         <UploadPanel chatId={chat.id} initialReports={chat.cleaning_reports ?? []} initialProfile={chat.schema_profile} initialNotes={chat.dataset_notes ?? ""} />
       </ChatPanel>
     </main>
