@@ -43,6 +43,8 @@ class AnalystResult(TypedDict):
     sql: str
     columns: list[str]
     rows: list[list]
+    truncated: bool  # only the first 1,000 rows were kept
+    error: str | None  # set when the query could not be made to work; `sql` is then the last attempt, no rows
 
 
 class State(DatasetInfo):

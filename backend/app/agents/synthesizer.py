@@ -13,24 +13,44 @@ from app.state import Context, State
 SYSTEM = """You are the Synthesizer of a data analysis assistant. Answer the user's question in plain language from the
 query results below, quoting the key numbers. Be concise. Do not invent numbers that are not in the results.
 State the As-of Date you used (for example "As of 2024-11-04, ...") so the user can see how relative dates were read.
+Results marked "truncated": true hold only the first 1,000 rows of a larger result: say so, and do not present totals over those rows as complete.
+Each entry under "Failed parts" could not be answered: state plainly that it failed and why. Never guess, estimate or fill it in.
 
 {context}
 
 Query results:
-{results}"""
+{results}
+
+Failed parts:
+{failures}"""
 
 
 def synthesizer(state: State, runtime: Runtime[Context]) -> dict:
     emit("step", node="synthesizer", message="Writing the answer")
-    results = json.dumps(state.get("results", []), default=str)  # default=str: Decimal, date
-    messages = [SystemMessage(SYSTEM.format(context=dataset_context(state), results=results)), HumanMessage(state["question"])]
-    text = ""
-    for token in stream_text(runtime.context.model, "synthesizer", messages):
-        text += token
-        emit("token", text=token)
+    results = [r for r in state.get("results", []) if not r.get("error")]
+    failed = [r for r in state.get("results", []) if r.get("error")]
+    if failed and not results:  # nothing to synthesize: report plainly without asking the model, so it cannot invent an answer
+        text = f"As of {state['as_of_date']}, I could not answer this question.\n" + "".join(_failure_line(r) for r in failed)
+        emit("token", text=text)
+    else:
+        failures = "".join(_failure_line(r) for r in failed) or "(none)\n"
+        system = SYSTEM.format(context=dataset_context(state), results=json.dumps(results, default=str), failures=failures)  # default=str: Decimal, date
+        messages = [SystemMessage(system), HumanMessage(state["question"])]
+        text = ""
+        for token in stream_text(runtime.context.model, "synthesizer", messages):
+            text += token
+            emit("token", text=token)
+    if any(r.get("truncated") for r in results) and not re.search(r"1,?000|truncat", text):  # same guarantee for the row cap
+        suffix = "\n\n(Note: a query returned more than 1,000 rows; only the first 1,000 were used.)"
+        text += suffix
+        emit("token", text=suffix)
     if state["as_of_date"] not in re.sub("[‐-―]", "-", text):  # the Answer must always state the As-of Date (models like Unicode hyphens)
         suffix = f"\n\n(As-of Date used: {state['as_of_date']}.)"
         text += suffix
         emit("token", text=suffix)
     emit("answer", text=text, as_of_date=state["as_of_date"], charts=state.get("charts", []))
     return {"answer": text}
+
+
+def _failure_line(r) -> str:
+    return f"- \"{r['sub_question']}\" failed after 3 attempts. Last query: {r['sql']} Database error: {r['error']}\n"

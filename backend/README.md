@@ -47,6 +47,8 @@ Agents get structured output via tool calling (`with_structured_output(..., meth
 
 The graph (`app/graph.py`) is Orchestrator, SQL Analyst (one per sub-question via `Send`), Synthesizer, with typed state in `app/state.py`; each agent lives in `app/agents/`. Nodes send events with `events.emit(event, **data)` (works from parallel branches). All generated SQL runs through `sql_guard.run_sql`: sqlglot SELECT/WITH-only check, then the Chat's own read-only role (ADR-0002). The As-of Date, Dataset Notes and rendered Schema Profile go into every agent prompt.
 
+SQL failures: an ordinary database error (syntax, unknown column or table, bad cast; also SQL sqlglot cannot parse) is fed back to the model and the query retried, at most 2 times per sub-question (the retry state is local to each SQL Analyst call, so parallel analysts are independent); if it still fails the result carries `error`, and the Synthesizer reports that part plainly (when every part failed it answers without calling the model). Adversarial or forbidden SQL is never retried: guard rejections (`DROP`, multiple statements, writes), `permission denied` (other Chats' schemas, `app`, `checkpoints`) and the 10s statement timeout are terminal and end the stream with an `error` event; data is unchanged because the Chat's role is read-only. Results are capped at 1,000 rows (`sql_guard.MAX_ROWS`, read through a server-side cursor); a truncated result is flagged to the Synthesizer and the Answer always says so.
+
 ## Scripted fake model (tests)
 
 `tests/fake_model.py:FakeChatModel` replaces the LLM; the `fake_model` fixture (conftest) is injected through `create_app(model_factory=...)` into the `client` fixture, and `ask(chat_id, question, as_of_date="2024-11-04")` returns the parsed SSE events.

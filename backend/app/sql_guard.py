@@ -26,10 +26,19 @@ class SqlRejected(ValueError):
     """The SQL was refused before reaching the database."""
 
 
+class SqlError(Exception):
+    """The database refused an ordinary query (syntax error, unknown column, bad cast, ...). The model can fix it, so the
+    SQL Analyst retries with this message. Everything else (SqlRejected, permission denied, timeout) is terminal."""
+
+
+MAX_ROWS = 1000  # rows that may reach the model
+
+
 @dataclass
 class QueryResult:
     columns: list[str]
     rows: list[list]
+    truncated: bool = False  # the query had more than MAX_ROWS rows; only the first MAX_ROWS are kept
 
 
 def validate_select(sql: str) -> str:
@@ -37,7 +46,7 @@ def validate_select(sql: str) -> str:
     try:
         statements = [s for s in sqlglot.parse(sql, read="postgres") if s is not None]
     except sqlglot.errors.SqlglotError as e:
-        raise SqlRejected(f"SQL could not be parsed: {e}") from e
+        raise SqlError(f"SQL could not be parsed: {e}") from e  # a typo the model can fix: retryable
     if len(statements) != 1:
         raise SqlRejected("Exactly one SQL statement is allowed")
     (stmt,) = statements
@@ -49,7 +58,8 @@ def validate_select(sql: str) -> str:
 def run_sql(settings: Settings, chat_id: uuid.UUID, sql: str) -> QueryResult:
     """Validate and execute one query for a Chat. The single place SQL runs.
 
-    Ticket #6 plugs in here: the 1,000-row cap on `fetchall` below and turning DB errors into retryable failures.
+    Raises SqlRejected (guard, permission denied, timeout: terminal) or SqlError (ordinary database error: retryable).
+    At most MAX_ROWS rows are returned, read through a server-side cursor so a huge result is never loaded in full.
     """
     validate_select(sql)
     options = (
@@ -57,6 +67,20 @@ def run_sql(settings: Settings, chat_id: uuid.UUID, sql: str) -> QueryResult:
         f"-c statement_timeout={settings.sql_timeout_ms} "
         "-c default_transaction_read_only=on"
     )
-    with psycopg.connect(chats.chat_dsn(settings, chat_id), options=options) as conn:
-        cur = conn.execute(sql)  # type: ignore[arg-type]  # generated text on purpose; validated above
-        return QueryResult([c.name for c in cur.description], [list(r) for r in cur.fetchall()])
+    try:
+        with psycopg.connect(chats.chat_dsn(settings, chat_id), options=options) as conn:
+            with conn.cursor(name="q") as cur:
+                cur.execute(sql)  # type: ignore[arg-type]  # generated text on purpose; validated above
+                rows = cur.fetchmany(MAX_ROWS + 1)
+                columns = [c.name for c in cur.description]
+    except (psycopg.errors.InsufficientPrivilege, psycopg.errors.QueryCanceled) as e:
+        raise SqlRejected(_message(e)) from e
+    except psycopg.Error as e:
+        if (e.sqlstate or "")[:2] in ("42", "22"):  # syntax/name errors and bad data (cast, division by zero)
+            raise SqlError(str(e).strip()) from e
+        raise
+    return QueryResult(columns, [list(r) for r in rows[:MAX_ROWS]], truncated=len(rows) > MAX_ROWS)
+
+
+def _message(e: psycopg.Error) -> str:
+    return e.diag.message_primary or str(e).strip()

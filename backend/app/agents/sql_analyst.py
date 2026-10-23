@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.agents.common import call_structured, dataset_context
 from app.events import emit
-from app.sql_guard import run_sql
+from app.sql_guard import SqlError, run_sql
 from app.state import AnalystInput, Context
 
 SYSTEM = """You are a SQL analyst. Write ONE PostgreSQL SELECT (or WITH ... SELECT) query that answers the sub-question.
@@ -23,17 +23,28 @@ class SqlQuery(BaseModel):
     sql: str = Field(description="A single PostgreSQL SELECT or WITH query")
 
 
+MAX_RETRIES = 2
+
+
 def sql_analyst(task: AnalystInput, runtime: Runtime[Context]) -> dict:
-    ctx = runtime.context
-    emit("step", node="sql_analyst", message=f"Writing SQL: {task['sub_question']}")
-    query = call_structured(
-        ctx.model,
-        "sql_analyst",
-        SqlQuery,
-        [SystemMessage(SYSTEM.format(context=dataset_context(task))), HumanMessage(task["sub_question"])],
-    )
-    emit("sql", sub_question=task["sub_question"], sql=query.sql)
-    # ticket #6: catch SqlRejected / database errors here, retry up to 2 times feeding the error back, and report failure.
-    # For now they propagate and the route turns them into an `error` event.
-    result = run_sql(ctx.settings, ctx.chat_id, query.sql)
-    return {"results": [{"sub_question": task["sub_question"], "sql": query.sql, "columns": result.columns, "rows": result.rows}]}
+    """Ordinary database errors are fed back to the model and retried (MAX_RETRIES times), then reported as a failed
+    result. SqlRejected (guard, permission denied, timeout) is terminal and propagates: the route emits an `error` event.
+    All retry state is local to this call, so parallel analysts never share it."""
+    ctx, sub_question = runtime.context, task["sub_question"]
+    emit("step", node="sql_analyst", message=f"Writing SQL: {sub_question}")
+    messages = [SystemMessage(SYSTEM.format(context=dataset_context(task))), HumanMessage(sub_question)]
+    for attempt in range(MAX_RETRIES + 1):
+        query = call_structured(ctx.model, "sql_analyst", SqlQuery, messages)
+        emit("sql", sub_question=sub_question, sql=query.sql)
+        try:
+            result = run_sql(ctx.settings, ctx.chat_id, query.sql)
+        except SqlError as e:
+            error = str(e)
+            if attempt == MAX_RETRIES:
+                break
+            emit("step", node="sql_analyst", message=f"Query failed, retrying ({attempt + 1}/{MAX_RETRIES}): {error.splitlines()[0]}")
+            messages = [*messages, HumanMessage(f"Your query failed.\nQuery: {query.sql}\nDatabase error: {error}\nReturn a corrected query.")]
+        else:
+            row = {"sub_question": sub_question, "sql": query.sql, "columns": result.columns, "rows": result.rows}
+            return {"results": [{**row, "truncated": result.truncated, "error": None}]}
+    return {"results": [{"sub_question": sub_question, "sql": query.sql, "columns": [], "rows": [], "truncated": False, "error": error}]}
