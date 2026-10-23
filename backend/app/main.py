@@ -4,9 +4,13 @@ from typing import Callable
 
 from fastapi import FastAPI, Form, HTTPException, UploadFile
 from langchain_core.language_models import BaseChatModel
+from langgraph.checkpoint.postgres import PostgresSaver
+from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 from pydantic import BaseModel
 
 from app import chats, ingestion, messages, sample, schema_profile
+from app.graph import build_graph
 from app.model import build_model
 from app.settings import Settings
 
@@ -27,7 +31,16 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         chats.init_store(settings)
-        yield
+        # The LangGraph checkpointer persists every Chat's thread (thread id = chat id) in the `checkpoints` schema.
+        # PostgresSaver needs autocommit + dict_row connections; the owner role has no `public`, hence the search_path.
+        with ConnectionPool(
+            settings.owner_dsn,
+            kwargs={"autocommit": True, "row_factory": dict_row, "options": "-c search_path=checkpoints"},
+        ) as pool:
+            saver = PostgresSaver(pool)
+            saver.setup()
+            app.state.graph = build_graph(saver)
+            yield
 
     app = FastAPI(lifespan=lifespan)
     app.state.settings = settings
@@ -44,16 +57,21 @@ def create_app(
     def create_chat():
         return {"id": str(chats.create_chat(settings))}
 
+    def chat_view(chat: dict) -> dict:
+        """The Chat store row plus the transcript from the checkpoint (empty before the first turn)."""
+        state = app.state.graph.get_state({"configurable": {"thread_id": str(chat["id"])}})
+        return {**chat, "transcript": state.values.get("turns", [])}
+
     @app.get("/chats/{chat_id}")
     def get_chat(chat_id: str):
-        return existing_chat(chat_id)
+        return chat_view(existing_chat(chat_id))
 
     @app.put("/chats/{chat_id}")
     def update_chat(chat_id: str, body: ChatUpdate):
         """Edit Dataset Notes / As-of Date at any time; the next message uses them. Returns the Chat like GET."""
         chat = existing_chat(chat_id)
         chats.update_chat(settings, chat["id"], body.model_dump(include=body.model_fields_set))
-        return chats.get_chat(settings, chat_id)
+        return chat_view(chats.get_chat(settings, chat_id))
 
     def ingest_files(chat: dict, files: list, dataset_notes: str | None = None) -> dict:
         """Ingest (filename, binary file) pairs in order (blocking). A rejected file stops the request, but files

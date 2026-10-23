@@ -53,6 +53,14 @@ SQL failures: an ordinary database error (syntax, unknown column or table, bad c
 
 **Direct replies.** Some questions get a plain reply with no analysts, Synthesizer or `sql` events (still `step`, streamed `token`s, then `answer` with `charts: []`): no Tables uploaded ("upload data first") and a blank/missing `as_of_date` ("set the As-of Date") are decided in code in `agents/orchestrator.py` before any model call; "can't be answered from this data" is the Orchestrator model setting `Plan.direct_reply`. `graph.route` sends these to the `direct_reply` node.
 
+## Resume and follow-ups
+
+Each Chat is one LangGraph thread (thread id = chat id) persisted by `PostgresSaver` in the `checkpoints` schema (owner role, a `psycopg_pool` pool with `autocommit` + `dict_row` and `search_path=checkpoints`, built in `create_app`'s lifespan; the graph is compiled per app by `graph.build_graph(checkpointer)`). A restart loses nothing.
+
+- **State.** `State.turns` is the only key that persists: the transcript, one `Turn` `{question, as_of_date, queries: [{task, sub_question, sql, error}], answer, charts}` appended by the `record_turn` node, the last node of both the Answer and the direct-reply path. Every other key is per-turn; `state.turn_input` resets all of them (list reducers `add_or_reset` take `None` as "clear") when a turn starts, so a finished or failed turn never leaks into the next. A turn that fails (an `error` event) records nothing and the thread stays usable.
+- **`GET /chats/{id}`** returns the Chat store row (`id, dataset_notes, as_of_date, schema_profile (with relationships), cleaning_reports`) plus `transcript`: all turns, oldest first, Chart Specs included (`[]` before the first turn); 404 for an unknown id. `PUT` returns the same shape.
+- **History policy.** The Orchestrator renders the last `state.HISTORY_TURNS` (6) turns as question, SQL run and answer text (`agents/common.render_history`) and puts them in `State.history`; every agent prompt gets them through `dataset_context` (Orchestrator: make follow-up sub-questions self-contained; SQL Analyst: may reuse earlier SQL; Synthesizer: answer only the new question). Chart Specs are never sent to the model. Older turns stay in the transcript only. Direct replies are turns too.
+
 ## Sample dataset, Dataset Notes, As-of Date
 
 - `POST /chats/{id}/sample` ingests the 8 Online Shop 2024 CSVs from `sample-data/` (tracked in git, 3MB; the original `Online Shop 2024/` folder is gitignored; compose mounts it at `/sample-data`), stores the sample Dataset Notes and As-of Date 2024-11-04 (both in `app/sample.py`) and returns `{reports, schema_profile, dataset_notes, as_of_date}`.

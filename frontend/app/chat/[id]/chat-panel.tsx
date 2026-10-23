@@ -14,11 +14,11 @@ function today() {
 /** Lets the upload panel (a child) set the As-of Date, e.g. when the sample dataset loads. */
 export const SetAsOfDate = createContext<(date: string) => void>(() => {});
 
-/** Header (with the As-of Date), `children` (the upload panel), transcript of this page session, and message box. */
-export function ChatPanel({ chatId, savedAsOf, children }: { chatId: string; savedAsOf: string | null; children: ReactNode }) {
+/** Header (with the As-of Date), `children` (the upload panel), transcript (saved turns, then this page session's), and message box. */
+export function ChatPanel({ chatId, savedAsOf, initialTurns, children }: { chatId: string; savedAsOf: string | null; initialTurns: Turn[]; children: ReactNode }) {
   const [asOfDate, setAsOfDateState] = useState(savedAsOf ?? ""); // else filled after mount: the server doesn't know the browser's today
   const [question, setQuestion] = useState("");
-  const [turns, setTurns] = useState<Turn[]>([]);
+  const [turns, setTurns] = useState<Turn[]>(initialTurns); // the saved transcript; new turns append
   const busy = turns.some((t) => t.status === "running");
 
   // Edits are saved on the Chat too (blank clears it); every message still carries the date.

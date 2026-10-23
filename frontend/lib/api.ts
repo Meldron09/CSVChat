@@ -38,12 +38,22 @@ export type SchemaProfile = {
   relationships: Relationship[];
 };
 
+/** One finished turn of the transcript (`GET /chats/{id}`), Chart Specs included. */
+export type TranscriptTurn = {
+  question: string;
+  as_of_date: string;
+  queries: { task: number; sub_question: string; sql: string; error: string | null }[];
+  answer: string;
+  charts: unknown[];
+};
+
 export type Chat = {
   id: string;
   dataset_notes: string | null;
   as_of_date: string | null;
   schema_profile: SchemaProfile | null;
   cleaning_reports: CleaningReport[] | null;
+  transcript: TranscriptTurn[];
 };
 
 /** Events of `POST /chats/{id}/messages` (text/event-stream). Charts only ever arrive in `answer`. */

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getChat } from "@/lib/api";
 import { ChatPanel } from "./chat-panel";
+import { fromTranscript } from "./turn";
 import { UploadPanel } from "./upload-panel";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
   if (!chat) notFound();
   return (
     <main className="mx-auto w-full max-w-3xl p-8">
-      <ChatPanel chatId={chat.id} savedAsOf={chat.as_of_date}>
+      <ChatPanel chatId={chat.id} savedAsOf={chat.as_of_date} initialTurns={chat.transcript.map(fromTranscript)}>
         <UploadPanel chatId={chat.id} initialReports={chat.cleaning_reports ?? []} initialProfile={chat.schema_profile} initialNotes={chat.dataset_notes ?? ""} />
       </ChatPanel>
     </main>

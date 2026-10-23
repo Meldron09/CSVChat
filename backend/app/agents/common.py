@@ -7,7 +7,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage
 from pydantic import BaseModel
 
-from app.state import DatasetInfo
+from app.state import HISTORY_TURNS, DatasetInfo, Turn
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -40,12 +40,23 @@ def stream_text(model: BaseChatModel, role: str, messages: list[BaseMessage]) ->
             yield chunk.text
 
 
+def render_history(turns: list[Turn]) -> str:
+    """The last HISTORY_TURNS turns as prompt text: question, SQL run and answer text. Chart Specs are left out on purpose."""
+    parts = []
+    for i, t in enumerate(turns[-HISTORY_TURNS:], 1):
+        sqls = "".join(f"\n  {q['sql']}" + (f"   -- failed: {q['error']}" if q.get("error") else "") for q in t["queries"]) or " (none)"
+        parts.append(f"Turn {i}\nQuestion: {t['question']}\nSQL run:{sqls}\nAnswer: {t['answer']}")
+    return "\n\n".join(parts)
+
+
 def dataset_context(info: DatasetInfo) -> str:
-    """The block injected into every agent prompt: As-of Date, Dataset Notes, Schema Profile."""
+    """The block injected into every agent prompt: As-of Date, Dataset Notes, Schema Profile, and earlier turns if any."""
+    history = info.get("history")
     return (
         f"As-of Date (today for this analysis): {info['as_of_date']}\n"
         "Resolve every relative time phrase (\"past year\", \"last 6 months\", \"this month\") against the As-of Date. "
         "Never use the real current date or now()/current_date.\n\n"
         f"Dataset Notes (business definitions you must follow):\n{info['dataset_notes'] or '(none)'}\n\n"
         f"Schema Profile:\n{info['schema_profile']}"
+        + (f"\n\nPrevious turns of this Chat (oldest first), for context only; the user's new question may build on them:\n{history}" if history else "")
     )

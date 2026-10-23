@@ -13,6 +13,7 @@ SYSTEM = """You are a SQL analyst. Write ONE PostgreSQL SELECT (or WITH ... SELE
 Query only the Tables in the Schema Profile, with unqualified table names (no schema prefix), joining on the listed Relationships.
 Read-only: never write INSERT, UPDATE, DELETE, DDL or multiple statements.
 Return only the columns needed, aggregate in SQL, and keep results small.
+If previous turns are shown, you may build on their SQL when the sub-question refers to them.
 
 {context}"""
 

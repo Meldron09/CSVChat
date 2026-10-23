@@ -1,3 +1,4 @@
+import type { TranscriptTurn } from "@/lib/api";
 import { ChartView } from "./chart";
 
 export type Turn = {
@@ -11,6 +12,12 @@ export type Turn = {
   status: "running" | "done" | "error";
   error?: string;
 };
+
+/** A turn from the saved transcript: finished, so no progress steps. */
+export function fromTranscript(t: TranscriptTurn, id: number): Turn {
+  const queries = t.queries.map((q) => ({ task: q.task, subQuestion: q.sub_question, sql: q.sql }));
+  return { id, question: t.question, asOfDate: t.as_of_date, steps: [], queries, charts: t.charts, text: t.answer, status: "done" };
+}
 
 export function TurnView({ turn }: { turn: Turn }) {
   return (

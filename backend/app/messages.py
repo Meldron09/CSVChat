@@ -9,9 +9,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from app import chats, schema_profile
 from app.events import format_sse
-from app.graph import graph
 from app.sql_guard import SqlRejected
-from app.state import Context
+from app.state import Context, turn_input
 
 router = APIRouter()
 log = logging.getLogger(__name__)
@@ -33,17 +32,18 @@ def post_message(chat_id: str, body: MessageIn, request: Request):
     chat = chats.get_chat(settings, chat_id)
     if chat is None:
         raise HTTPException(404, "Chat not found")
-    state = {
-        "question": body.question,
-        "as_of_date": body.as_of_date.isoformat() if body.as_of_date else "",
-        "dataset_notes": chat["dataset_notes"],
-        "schema_profile": schema_profile.render_for_prompt(chat["schema_profile"]),
-    }
+    state = turn_input(
+        body.question,
+        body.as_of_date.isoformat() if body.as_of_date else "",
+        chat["dataset_notes"],
+        schema_profile.render_for_prompt(chat["schema_profile"]),
+    )
+    config = {"configurable": {"thread_id": str(chat["id"])}}  # one checkpointed thread per Chat
 
     def events():
         try:
             context = Context(settings=settings, model=model_factory(settings), chat_id=chat["id"])
-            for part in graph.stream(state, context=context, stream_mode="custom"):
+            for part in request.app.state.graph.stream(state, config, context=context, stream_mode="custom"):
                 yield format_sse(part["event"], part["data"])
         except Exception as e:  # mid-stream failures reach the client as an `error` event
             if not isinstance(e, SqlRejected):
