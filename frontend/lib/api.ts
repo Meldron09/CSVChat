@@ -24,11 +24,25 @@ export type CleaningReport = {
   outliers: OutlierFlag[];
 };
 
+export type Relationship = {
+  from_table: string;
+  from_column: string;
+  to_table: string;
+  to_column: string;
+  cardinality: "many_to_one" | "one_to_one";
+  match: number;
+};
+
+export type SchemaProfile = {
+  tables: { name: string; row_count: number; columns: { name: string; type: string; samples: string[] }[] }[];
+  relationships: Relationship[];
+};
+
 export type Chat = {
   id: string;
   dataset_notes: string | null;
   as_of_date: string | null;
-  schema_profile: unknown;
+  schema_profile: SchemaProfile | null;
   cleaning_reports: CleaningReport[] | null;
 };
 

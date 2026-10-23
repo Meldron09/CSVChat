@@ -12,7 +12,7 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
     <main className="mx-auto w-full max-w-3xl p-8">
       <h1 className="text-2xl font-semibold">CSVChat</h1>
       <p className="mt-2 text-sm text-zinc-500">Chat {chat.id}</p>
-      <UploadPanel chatId={chat.id} initialReports={chat.cleaning_reports ?? []} initialNotes={chat.dataset_notes ?? ""} />
+      <UploadPanel chatId={chat.id} initialReports={chat.cleaning_reports ?? []} initialProfile={chat.schema_profile} initialNotes={chat.dataset_notes ?? ""} />
     </main>
   );
 }

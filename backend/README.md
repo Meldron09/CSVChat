@@ -33,3 +33,7 @@ The chat model is built in one place, `app/model.py:build_model`, and `create_ap
 ## Ingestion
 
 `POST /chats/{id}/files` (multipart: `files` one or more `.csv`, optional `dataset_notes`) blocks until every file is cleaned and loaded; see `app/ingestion.py`. Errors: 404 unknown Chat, 415 non-CSV, 413 over `MAX_UPLOAD_BYTES` (default 200MB), 422 empty/unparseable. The raw upload is kept untouched in `UPLOAD_DIR/<chat id>/<table>.csv` (compose volume `uploads`). The sample-dataset test reads `ONLINE_SHOP_DIR` (skipped if the directory is missing).
+
+## Schema Profile
+
+After every upload `app/schema_profile.py` rebuilds the Chat's Schema Profile (per Table: row count, columns, types, up to 3 sample values; plus Relationships), stores it in `app.chats.schema_profile` and returns it from `POST /chats/{id}/files` and `GET /chats/{id}`. Relationships are inferred deterministically in SQL: `<table>_id` columns (singular or plural table name) point at that Table's `<table>_id`/`id`, other shared column names pair a unique side with a non-unique one, and a link needs a unique parent column plus at least 90% of the child's distinct values present in it (so shared names like `address` are not joined). `render_for_prompt(profile)` gives the compact text form for agent prompts.

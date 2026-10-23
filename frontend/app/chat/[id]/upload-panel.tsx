@@ -1,18 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import type { CleaningReport } from "@/lib/api";
+import type { CleaningReport, SchemaProfile } from "@/lib/api";
 
 export function UploadPanel({
   chatId,
   initialReports,
+  initialProfile,
   initialNotes,
 }: {
   chatId: string;
   initialReports: CleaningReport[];
+  initialProfile: SchemaProfile | null;
   initialNotes: string;
 }) {
   const [reports, setReports] = useState(initialReports);
+  const [profile, setProfile] = useState(initialProfile);
   const [notes, setNotes] = useState(initialNotes);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +28,7 @@ export function UploadPanel({
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.detail ?? `Upload failed (${res.status})`);
       const fresh: CleaningReport[] = body.reports;
+      setProfile(body.schema_profile);
       setReports((old) => [...old.filter((r) => !fresh.some((f) => f.table === r.table)), ...fresh]);
       (form.elements.namedItem("files") as HTMLInputElement).value = "";
     } catch (e) {
@@ -62,12 +66,53 @@ export function UploadPanel({
       </form>
       {busy && <p role="status" className="mt-3 text-sm text-zinc-500">Ingesting files, this can take a while for large CSVs.</p>}
       {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
+      {profile && <Profile profile={profile} />}
       <div className="mt-6 flex flex-col gap-4">
         {reports.map((r) => (
           <Report key={r.table} report={r} />
         ))}
       </div>
     </section>
+  );
+}
+
+function Profile({ profile }: { profile: SchemaProfile }) {
+  return (
+    <article className="mt-6 rounded border border-zinc-300 p-4 text-sm" aria-label="Relationships">
+      <h2 className="font-semibold">Relationships</h2>
+      {profile.relationships.length === 0 ? (
+        <p className="mt-1 text-zinc-500">No relationships found between the {profile.tables.length} table(s).</p>
+      ) : (
+        <ul className="mt-1 list-disc pl-5">
+          {profile.relationships.map((r) => (
+            <li key={`${r.from_table}.${r.from_column}>${r.to_table}`}>
+              {r.from_table}.{r.from_column} → {r.to_table}.{r.to_column}{" "}
+              <span className="text-zinc-500">
+                ({r.cardinality === "one_to_one" ? "one-to-one" : "many-to-one"}, {Math.round(r.match * 100)}% of values match)
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <details className="mt-3">
+        <summary className="cursor-pointer font-medium">Schema Profile (what the agents see)</summary>
+        {profile.tables.map((t) => (
+          <div key={t.name} className="mt-2">
+            <h3 className="font-medium">
+              {t.name} <span className="font-normal text-zinc-500">({t.row_count.toLocaleString()} rows)</span>
+            </h3>
+            <ul className="pl-3 text-xs">
+              {t.columns.map((c) => (
+                <li key={c.name} className="break-all">
+                  {c.name} <span className="text-zinc-500">{c.type}</span>
+                  {c.samples.length > 0 && <span className="text-zinc-500"> e.g. {c.samples.join(" | ")}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </details>
+    </article>
   );
 }
 

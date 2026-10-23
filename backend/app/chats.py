@@ -70,3 +70,8 @@ def save_ingestion(settings: Settings, chat_id: uuid.UUID, reports: list[dict], 
             "UPDATE app.chats SET cleaning_reports = %s, dataset_notes = COALESCE(%s, dataset_notes) WHERE id = %s",
             (Jsonb(merged), dataset_notes, chat_id),
         )
+
+
+def save_profile(settings: Settings, chat_id: uuid.UUID, profile: dict) -> None:
+    with psycopg.connect(settings.owner_dsn) as conn:
+        conn.execute("UPDATE app.chats SET schema_profile = %s WHERE id = %s", (Jsonb(profile), chat_id))
