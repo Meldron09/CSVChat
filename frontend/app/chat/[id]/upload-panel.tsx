@@ -30,10 +30,16 @@ export function UploadPanel({
     try {
       const res = await fetch(`/api/chats/${chatId}/${path}`, { method: "POST", body });
       const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(json?.detail ?? `Upload failed (${res.status})`);
-      const fresh: CleaningReport[] = json.reports;
-      setProfile(json.schema_profile);
-      setReports((old) => [...old.filter((r) => !fresh.some((f) => f.table === r.table)), ...fresh]);
+      // a rejected file still reports the files loaded before it: show them, whatever the status
+      const fresh: CleaningReport[] = Array.isArray(json?.reports) ? json.reports : [];
+      if (fresh.length > 0) {
+        setProfile(json.schema_profile);
+        setReports((old) => [...old.filter((r) => !fresh.some((f) => f.table === r.table)), ...fresh]);
+      }
+      if (!res.ok) {
+        const loaded = fresh.length > 0 ? ` (${fresh.length} earlier file(s) were loaded; their reports are below)` : "";
+        throw new Error(`${json?.detail ?? `Upload failed (${res.status})`}${loaded}`);
+      }
       if (form) (form.elements.namedItem("files") as HTMLInputElement).value = "";
       if (path === "sample") {
         setNotes(json.dataset_notes);
@@ -135,6 +141,7 @@ function Report({ report: r }: { report: CleaningReport }) {
         {r.rows_loaded.toLocaleString()} rows loaded of {r.rows_read.toLocaleString()} read ·{" "}
         {r.duplicates_removed.toLocaleString()} duplicate rows removed · {r.encoding} · delimiter {JSON.stringify(r.delimiter)}
       </p>
+      {r.duplicates_removed > 0 && <p className="text-xs text-zinc-500">Duplicates: {r.duplicates_basis}.</p>}
       <table className="mt-3 w-full text-left">
         <thead>
           <tr className="text-zinc-500">
@@ -144,7 +151,12 @@ function Report({ report: r }: { report: CleaningReport }) {
         <tbody>
           {r.columns.map((c) => (
             <tr key={c.name}>
-              <td>{c.name}</td><td>{c.type}</td><td>{c.nulls}</td><td>{c.values_trimmed}</td>
+              <td>{c.name}</td><td>{c.type}</td>
+              <td>
+                {c.nulls}
+                {c.null_tokens_converted > 0 && <span className="text-zinc-500"> ({c.null_tokens_converted} from NA/null/none-style text)</span>}
+              </td>
+              <td>{c.values_trimmed}</td>
             </tr>
           ))}
         </tbody>

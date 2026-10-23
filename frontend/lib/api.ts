@@ -21,8 +21,9 @@ export type CleaningReport = {
   delimiter: string;
   rows_read: number;
   duplicates_removed: number;
+  duplicates_basis: string; // what counts as a duplicate (whitespace-normalised values)
   rows_loaded: number;
-  columns: { name: string; original_name: string; type: string; nulls: number; values_trimmed: number }[];
+  columns: { name: string; original_name: string; type: string; nulls: number; null_tokens_converted: number; values_trimmed: number }[];
   outliers: OutlierFlag[];
 };
 

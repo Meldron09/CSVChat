@@ -1,4 +1,5 @@
 import type { TranscriptTurn } from "@/lib/api";
+import type { ChartSpec } from "@/lib/chart-spec";
 import { ChartView } from "./chart";
 
 export type Turn = {
@@ -7,16 +8,17 @@ export type Turn = {
   asOfDate: string;
   steps: string[]; // progress messages in arrival order
   queries: { task: number; subQuestion: string; sql: string }[]; // parallel tasks interleave: shown in arrival order, labelled by task
-  charts?: unknown[]; // Chart Specs, only from the final answer event
+  charts?: ChartSpec[]; // Chart Specs, only from the final answer event
   text: string; // streamed token by token, replaced by the final Answer text
   status: "running" | "done" | "error";
   error?: string;
 };
 
-/** A turn from the saved transcript: finished, so no progress steps. */
+/** A turn from the saved transcript: finished (or failed: no answer, the error text and the SQL seen), so no progress steps. */
 export function fromTranscript(t: TranscriptTurn, id: number): Turn {
   const queries = t.queries.map((q) => ({ task: q.task, subQuestion: q.sub_question, sql: q.sql }));
-  return { id, question: t.question, asOfDate: t.as_of_date, steps: [], queries, charts: t.charts, text: t.answer, status: "done" };
+  const turn: Turn = { id, question: t.question, asOfDate: t.as_of_date, steps: [], queries, charts: t.charts, text: t.answer, status: "done" };
+  return t.error ? { ...turn, status: "error", error: t.error } : turn;
 }
 
 export function TurnView({ turn }: { turn: Turn }) {
@@ -45,7 +47,7 @@ export function TurnView({ turn }: { turn: Turn }) {
       {turn.charts?.map((spec, i) => <ChartView key={i} spec={spec} />)}
       {turn.status === "error" && (
         <p role="alert" className="text-red-600">
-          {turn.error}
+          This question failed: {turn.error}
         </p>
       )}
     </article>
