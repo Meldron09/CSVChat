@@ -14,16 +14,25 @@ SYSTEM = """You are the Synthesizer of a data analysis assistant. Answer the use
 query results below, quoting the key numbers. Be concise. Do not invent numbers that are not in the results.
 State the As-of Date you used (for example "As of 2024-11-04, ...") so the user can see how relative dates were read.
 
+{charts}
+
 {context}
 
 Query results:
 {results}"""
 
 
+def charts_block(state: State) -> str:
+    """Tell the Synthesizer which charts will be drawn next to its text, so it neither claims nor omits them."""
+    titles = [c["title"] for c in state.get("charts", [])]
+    out = f"Charts shown to the user beside your answer: {titles}. You may refer to them." if titles else "No charts are shown: do not mention or promise any chart."
+    return "\n".join([out, *(f"Chart problem (do not claim this chart): {n}" for n in state.get("chart_notes", []))])
+
+
 def synthesizer(state: State, runtime: Runtime[Context]) -> dict:
     emit("step", node="synthesizer", message="Writing the answer")
     results = json.dumps(state.get("results", []), default=str)  # default=str: Decimal, date
-    messages = [SystemMessage(SYSTEM.format(context=dataset_context(state), results=results)), HumanMessage(state["question"])]
+    messages = [SystemMessage(SYSTEM.format(charts=charts_block(state), context=dataset_context(state), results=results)), HumanMessage(state["question"])]
     text = ""
     for token in stream_text(runtime.context.model, "synthesizer", messages):
         text += token

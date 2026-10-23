@@ -1,13 +1,14 @@
 """Graph wiring: START -> orchestrator -> sql_analyst (one per sub-question, via Send) -> synthesizer -> END.
 
 Adding a node: write it in its own module under app/agents, register it here, extend `State` in app/state.py.
-- Chart Builder (#7): node between `sql_analyst` and `synthesizer`.
+- Chart Builder (#7): node between `sql_analyst` and `synthesizer`; sees all `results`, appends validated `charts`.
 - Fan-out (#8): orchestrator returns several sub-questions; `fan_out` already sends one SQL Analyst each.
 """
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
+from app.agents.chart_builder import chart_builder
 from app.agents.orchestrator import orchestrator
 from app.agents.sql_analyst import sql_analyst
 from app.agents.synthesizer import synthesizer
@@ -23,10 +24,12 @@ def build_graph():
     g = StateGraph(State, context_schema=Context)
     g.add_node("orchestrator", orchestrator)
     g.add_node("sql_analyst", sql_analyst)
+    g.add_node("chart_builder", chart_builder)
     g.add_node("synthesizer", synthesizer)
     g.add_edge(START, "orchestrator")
     g.add_conditional_edges("orchestrator", fan_out, ["sql_analyst"])
-    g.add_edge("sql_analyst", "synthesizer")
+    g.add_edge("sql_analyst", "chart_builder")  # runs once, after all SQL Analysts of the question
+    g.add_edge("chart_builder", "synthesizer")
     g.add_edge("synthesizer", END)
     return g.compile()
 

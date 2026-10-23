@@ -10,7 +10,7 @@
 
 Responses are consumed per role, in call order. A response may also be an Exception (raised by the call) or a
 callable taking the messages and returning any of the above (use it when parallel calls of one role must be told
-apart by their prompt). A call to a role with nothing scripted fails the test loudly.
+apart by their prompt). A call to a role with nothing scripted fails the test loudly (except `chart_builder`, which builds no charts).
 The role of a call comes from the `role:<name>` tag set in app/agents/common.py:role_config.
 """
 
@@ -24,6 +24,9 @@ from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from langchain_core.utils.function_calling import convert_to_openai_tool
 from pydantic import BaseModel, PrivateAttr
+
+
+DEFAULTS = {"chart_builder": {"charts": []}}  # an unscripted Chart Builder builds no charts
 
 
 class FakeChatModel(BaseChatModel):
@@ -68,9 +71,12 @@ class FakeChatModel(BaseChatModel):
         role = kwargs.pop("_role", "unknown")
         with self._lock:
             self._prompts[role].append(list(messages))
-            if not self._scripts[role]:
+            if self._scripts[role]:
+                item = self._scripts[role].popleft()
+            elif role in DEFAULTS:  # a role that usually has nothing to do in a test answers "nothing" unless scripted
+                item = DEFAULTS[role]
+            else:
                 raise AssertionError(f"FakeChatModel: nothing scripted for role {role!r} (call {len(self._prompts[role])})")
-            item = self._scripts[role].popleft()
         if callable(item):
             item = item(messages)
         if isinstance(item, Exception):

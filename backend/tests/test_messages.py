@@ -37,7 +37,7 @@ def test_events_stream_in_order_and_the_answer_is_the_streamed_text(loaded_chat,
     kinds = names(events)
     assert kinds[0] == "step" and kinds[-1] == "answer" and "error" not in kinds
     assert kinds.index("sql") < kinds.index("token") < kinds.index("answer")
-    assert {d["node"] for e, d in events if e == "step"} == {"orchestrator", "sql_analyst", "synthesizer"}
+    assert {d["node"] for e, d in events if e == "step"} == {"orchestrator", "sql_analyst", "chart_builder", "synthesizer"}
     assert [d["sql"] for e, d in events if e == "sql"] == ["SELECT sum(total_price) AS revenue FROM orders"]
 
     streamed = "".join(d["text"] for e, d in events if e == "token")
