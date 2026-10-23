@@ -1,0 +1,23 @@
+[project]
+name = "csvchat-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "psycopg[binary]",
+    "langchain-ollama",
+    "pandas>=3.1.0",
+    "python-multipart>=0.0.32",
+    "langgraph>=1.2.16",
+    "sqlglot>=30.24.0",
+    "langgraph-checkpoint-postgres>=3.2.0",
+    "psycopg-pool>=3.3.3",
+]
+
+[dependency-groups]
+dev = ["pytest", "httpx"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

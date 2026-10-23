@@ -1,2 +1,6 @@
 Online Shop 2024/
 gen_ai_fs_take_home_assignemnt_chat.pdf
+.venv/
+__pycache__/
+.pytest_cache/
+backend/data/
