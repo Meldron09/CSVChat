@@ -9,6 +9,7 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
+from app import chats
 from app.main import create_app
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -32,7 +33,7 @@ def upload(client, chat_id, *files, notes=None):
 
 
 def query(settings, chat_id, statement):
-    with psycopg.connect(settings.readonly_dsn, autocommit=True) as ro:  # also proves the read-only role sees the Tables
+    with psycopg.connect(chats.chat_dsn(settings, uuid.UUID(chat_id)), autocommit=True) as ro:  # also proves the Chat's role sees the Tables
         ro.execute(f'SET search_path = "chat_{uuid.UUID(chat_id).hex}"')
         return ro.execute(statement).fetchall()
 

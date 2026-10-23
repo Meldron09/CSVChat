@@ -60,6 +60,13 @@ def test_as_of_date_and_dataset_notes_reach_the_prompts_and_the_answer_states_th
     assert "2024-03-31" in events[-1][1]["text"]
 
 
+def test_a_model_that_skips_the_tool_call_is_nudged_once(loaded_chat, ask, fake_model):
+    fake_model.script("orchestrator", "I would rather chat.", {"sub_questions": ["What is the total revenue?"]})
+    fake_model.script("sql_analyst", {"sql": "SELECT 1 AS one"}).script("synthesizer", "ok")
+    assert names(ask(loaded_chat, "revenue"))[-1] == "answer"
+    assert "calling the Plan tool" in fake_model.prompt_text("orchestrator")  # the second attempt carried the nudge
+
+
 @pytest.mark.parametrize(
     "bad_sql",
     [

@@ -1,6 +1,7 @@
 """Synthesizer: merges the results into the final Answer, streaming its text."""
 
 import json
+import re
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.runtime import Runtime
@@ -27,7 +28,7 @@ def synthesizer(state: State, runtime: Runtime[Context]) -> dict:
     for token in stream_text(runtime.context.model, "synthesizer", messages):
         text += token
         emit("token", text=token)
-    if state["as_of_date"] not in text:  # the Answer must always state the As-of Date it used
+    if state["as_of_date"] not in re.sub("[‐-―]", "-", text):  # the Answer must always state the As-of Date (models like Unicode hyphens)
         suffix = f"\n\n(As-of Date used: {state['as_of_date']}.)"
         text += suffix
         emit("token", text=suffix)

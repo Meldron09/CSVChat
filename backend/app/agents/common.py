@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from typing import TypeVar
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, HumanMessage
 from pydantic import BaseModel
 
 from app.state import DatasetInfo
@@ -22,9 +22,16 @@ def call_structured(model: BaseChatModel, role: str, schema: type[T], messages: 
     """Model call returning a validated `schema` instance via tool calling.
 
     Tool calling, not Ollama's `format=` JSON schema: gpt-oss ignores `format` (its Harmony output format
-    bypasses constrained decoding) but supports tools reliably.
+    bypasses constrained decoding) but supports tools reliably. Ollama cannot force the tool call though, so a
+    plain-text reply is retried once with a nudge before giving up.
     """
-    return model.with_structured_output(schema, method="function_calling").invoke(messages, config=role_config(role))
+    runnable = model.with_structured_output(schema, method="function_calling")
+    for _ in range(2):
+        out = runnable.invoke(messages, config=role_config(role))
+        if out is not None:  # None: the model answered in text instead of calling the tool
+            return out
+        messages = [*messages, HumanMessage(f"Respond only by calling the {schema.__name__} tool.")]
+    raise ValueError(f"The model did not return a structured {schema.__name__} ({role})")
 
 
 def stream_text(model: BaseChatModel, role: str, messages: list[BaseMessage]) -> Iterator[str]:

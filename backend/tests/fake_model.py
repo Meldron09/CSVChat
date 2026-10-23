@@ -4,6 +4,7 @@
     fake.script("orchestrator", {"sub_questions": ["..."]})      # structured output: dict or pydantic instance
     fake.script("sql_analyst", {"sql": "SELECT 1"})
     fake.script("synthesizer", "The answer text")                # plain text, streamed word by word
+    # (a plain str scripted for a structured-output role simulates the model skipping the tool call)
     ...
     fake.prompt_text("sql_analyst")                              # everything the SQL Analyst was sent
 
@@ -74,7 +75,7 @@ class FakeChatModel(BaseChatModel):
             item = item(messages)
         if isinstance(item, Exception):
             raise item
-        if tools := kwargs.get("tools"):
+        if (tools := kwargs.get("tools")) and not isinstance(item, str):  # a str on a structured call = model skipped the tool
             args = item.model_dump() if isinstance(item, BaseModel) else dict(item)
             return None, {"name": convert_to_openai_tool(tools[0])["function"]["name"], "args": args}
         return str(item), None

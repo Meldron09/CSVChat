@@ -46,6 +46,14 @@ export type Chat = {
   cleaning_reports: CleaningReport[] | null;
 };
 
+/** Events of `POST /chats/{id}/messages` (text/event-stream). Charts only ever arrive in `answer`. */
+export type ChatEvent =
+  | { event: "step"; data: { node: string; message: string } }
+  | { event: "sql"; data: { sub_question: string; sql: string } }
+  | { event: "token"; data: { text: string } }
+  | { event: "answer"; data: { text: string; as_of_date: string; charts: unknown[] } }
+  | { event: "error"; data: { message: string } };
+
 export async function createChat(): Promise<{ id: string }> {
   const res = await fetch(`${BACKEND_URL}/chats`, { method: "POST", cache: "no-store" });
   if (!res.ok) throw new Error(`POST /chats failed: ${res.status}`);
