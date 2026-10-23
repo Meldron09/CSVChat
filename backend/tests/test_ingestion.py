@@ -13,7 +13,7 @@ from app import chats
 from app.main import create_app
 
 FIXTURES = Path(__file__).parent / "fixtures"
-SAMPLE_DIR = Path(os.environ.get("ONLINE_SHOP_DIR", "/Users/meldron/Documents/Meldron/CSVChat/Online Shop 2024"))
+SAMPLE_DIR = Path(os.environ.get("ONLINE_SHOP_DIR", Path(__file__).resolve().parents[2] / "sample-data"))  # the bundled copy
 SAMPLE_ROWS = {  # file -> (table, rows)
     "customers.csv": ("customers", 10000),
     "orders.csv": ("orders", 15000),

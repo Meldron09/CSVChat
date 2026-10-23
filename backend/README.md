@@ -82,7 +82,7 @@ Roles are the `role:<name>` tags set by `agents/common.py` (`orchestrator`, `sql
 
 ## Ingestion
 
-`POST /chats/{id}/files` (multipart: `files` one or more `.csv`, optional `dataset_notes`) blocks until every file is cleaned and loaded; see `app/ingestion.py`. Errors: 404 unknown Chat, 415 non-CSV, 413 over `MAX_UPLOAD_BYTES` (default 200MB), 422 empty/unparseable. The raw upload is kept untouched in `UPLOAD_DIR/<chat id>/<table>.csv` (compose volume `uploads`). The sample-dataset test reads `ONLINE_SHOP_DIR` (skipped if the directory is missing).
+`POST /chats/{id}/files` (multipart: `files` one or more `.csv`, optional `dataset_notes`) blocks until every file is cleaned and loaded; see `app/ingestion.py`. Errors: 404 unknown Chat, 415 non-CSV, 413 over `MAX_UPLOAD_BYTES` (default 200MB), 422 empty/unparseable. The raw upload is kept untouched in `UPLOAD_DIR/<chat id>/<table>.csv` (compose volume `uploads`). The sample-dataset tests read `ONLINE_SHOP_DIR` (default: the bundled `sample-data/`; skipped if the directory is missing).
 
 ## Schema Profile
 
