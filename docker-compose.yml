@@ -28,7 +28,7 @@ services:
       POSTGRES_DB: csvchat
       DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-owner}
       DB_CHAT_ROLE_SECRET: ${DB_CHAT_ROLE_SECRET:-dev-chat-role-secret}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-gpt-oss:20b-cloud}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gpt-oss:120b-cloud}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       UPLOAD_DIR: /data/uploads
     volumes:
