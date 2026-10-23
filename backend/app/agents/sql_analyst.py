@@ -25,15 +25,15 @@ class SqlQuery(BaseModel):
 
 def sql_analyst(task: AnalystInput, runtime: Runtime[Context]) -> dict:
     ctx = runtime.context
-    emit("step", node="sql_analyst", message=f"Writing SQL: {task['sub_question']}")
+    emit("step", node="sql_analyst", task=task["task"], message=f"Task {task['task'] + 1}: writing SQL for: {task['sub_question']}")
     query = call_structured(
         ctx.model,
         "sql_analyst",
         SqlQuery,
         [SystemMessage(SYSTEM.format(context=dataset_context(task))), HumanMessage(task["sub_question"])],
     )
-    emit("sql", sub_question=task["sub_question"], sql=query.sql)
+    emit("sql", task=task["task"], sub_question=task["sub_question"], sql=query.sql)
     # ticket #6: catch SqlRejected / database errors here, retry up to 2 times feeding the error back, and report failure.
     # For now they propagate and the route turns them into an `error` event.
     result = run_sql(ctx.settings, ctx.chat_id, query.sql)
-    return {"results": [{"sub_question": task["sub_question"], "sql": query.sql, "columns": result.columns, "rows": result.rows}]}
+    return {"results": [{"task": task["task"], "sub_question": task["sub_question"], "sql": query.sql, "columns": result.columns, "rows": result.rows}]}

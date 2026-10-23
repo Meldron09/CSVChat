@@ -8,10 +8,17 @@ from app.agents.common import call_structured, dataset_context
 from app.events import emit
 from app.state import Context, State
 
+MAX_SUB_QUESTIONS = 4  # fan-out cap: each sub-question is one parallel SQL Analyst (one model call + one query)
+
 SYSTEM = """You are the Orchestrator of a data analysis assistant. The user asks a question about their uploaded CSV Tables.
-Rewrite it as ONE self-contained sub-question a SQL analyst can answer with a single query.
-Resolve relative dates against the As-of Date and write the resulting absolute dates into the sub-question.
-Keep any business definitions from the Dataset Notes that apply (for example how Revenue is defined).
+Split it into independent, self-contained sub-questions; each is answered by a separate SQL analyst with ONE query, in parallel.
+- A simple question, or one that is a single analysis (even over several Tables), gives exactly ONE sub-question: the question rewritten.
+- A multi-part question ("revenue by month and the top 5 products") gives one sub-question per part, at most {max}. Merge closely related parts.
+- Sub-questions must not depend on each other's results, and must not repeat the same analysis.
+- A part that spans Tables (for example suppliers vs review ratings) stays ONE sub-question that says which Tables to join and
+  to join through the Relationships in the Schema Profile. Never split a join across sub-questions.
+Resolve relative dates against the As-of Date and write the resulting absolute dates into each sub-question.
+Keep any business definitions from the Dataset Notes that apply (for example how Revenue is defined) in each sub-question that needs them.
 
 {context}"""
 
@@ -19,7 +26,10 @@ Keep any business definitions from the Dataset Notes that apply (for example how
 class Plan(BaseModel):
     """The analysis plan."""
 
-    sub_questions: list[str] = Field(min_length=1, description="Independent, self-contained sub-questions. Exactly one for now.")
+    sub_questions: list[str] = Field(
+        min_length=1,
+        description=f"Independent, self-contained sub-questions in the order the user asked them: one for a simple question, at most {MAX_SUB_QUESTIONS}.",
+    )
 
 
 def orchestrator(state: State, runtime: Runtime[Context]) -> dict:
@@ -28,7 +38,8 @@ def orchestrator(state: State, runtime: Runtime[Context]) -> dict:
         runtime.context.model,
         "orchestrator",
         Plan,
-        [SystemMessage(SYSTEM.format(context=dataset_context(state))), HumanMessage(state["question"])],
+        [SystemMessage(SYSTEM.format(max=MAX_SUB_QUESTIONS, context=dataset_context(state))), HumanMessage(state["question"])],
     )
-    # ticket #8 (fan-out): drop the [:1]; graph.fan_out already sends one SQL Analyst per sub-question.
-    return {"sub_questions": plan.sub_questions[:1]}
+    if len(plan.sub_questions) > MAX_SUB_QUESTIONS:  # truncate rather than fail: the model may overshoot
+        emit("step", node="orchestrator", message=f"The question has {len(plan.sub_questions)} parts; answering the first {MAX_SUB_QUESTIONS}")
+    return {"sub_questions": plan.sub_questions[:MAX_SUB_QUESTIONS]}

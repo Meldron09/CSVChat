@@ -39,11 +39,13 @@ Agents get structured output via tool calling (`with_structured_output(..., meth
 
 | event | data |
 | --- | --- |
-| `step` | `{node, message}`: progress (`orchestrator`, `sql_analyst`, `synthesizer`) |
-| `sql` | `{sub_question, sql}`: a query, just before it runs |
+| `step` | `{node, message}`: progress (`orchestrator`, `sql_analyst`, `synthesizer`); SQL Analyst steps also carry `task` (0-based) |
+| `sql` | `{task, sub_question, sql}`: a query, just before it runs; `task` is the 0-based index of its sub-question |
 | `token` | `{text}`: next piece of the Answer |
 | `answer` | `{text, as_of_date, charts}`: the final Answer (`charts` always `[]` for now; the only event that carries charts) |
 | `error` | `{message}`: terminal; the run stopped |
+
+A multi-part question is split by the Orchestrator into at most `MAX_SUB_QUESTIONS` (4, `app/agents/orchestrator.py`; extra parts are dropped with a `step` notice) independent sub-questions, one parallel SQL Analyst each; a simple question yields exactly one. `step`/`sql` events of parallel tasks interleave (use `task` to tell them apart) but all precede the first `token`. Cross-file parts stay one sub-question joined through the Relationships in the Schema Profile. The Synthesizer receives the results ordered by `task` and merges them.
 
 The graph (`app/graph.py`) is Orchestrator, SQL Analyst (one per sub-question via `Send`), Synthesizer, with typed state in `app/state.py`; each agent lives in `app/agents/`. Nodes send events with `events.emit(event, **data)` (works from parallel branches). All generated SQL runs through `sql_guard.run_sql`: sqlglot SELECT/WITH-only check, then the Chat's own read-only role (ADR-0002). The As-of Date, Dataset Notes and rendered Schema Profile go into every agent prompt.
 

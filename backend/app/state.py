@@ -35,10 +35,12 @@ class DatasetInfo(TypedDict):
 class AnalystInput(DatasetInfo):
     """Payload of the `Send` to the SQL Analyst: one independent sub-question."""
 
+    task: int  # 0-based position of the sub-question in the plan; tags this analyst's events and result
     sub_question: str
 
 
 class AnalystResult(TypedDict):
+    task: int
     sub_question: str
     sql: str
     columns: list[str]

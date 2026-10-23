@@ -48,8 +48,8 @@ export type Chat = {
 
 /** Events of `POST /chats/{id}/messages` (text/event-stream). Charts only ever arrive in `answer`. */
 export type ChatEvent =
-  | { event: "step"; data: { node: string; message: string } }
-  | { event: "sql"; data: { sub_question: string; sql: string } }
+  | { event: "step"; data: { node: string; message: string; task?: number } } // task: 0-based parallel SQL Analyst index
+  | { event: "sql"; data: { task: number; sub_question: string; sql: string } }
   | { event: "token"; data: { text: string } }
   | { event: "answer"; data: { text: string; as_of_date: string; charts: unknown[] } }
   | { event: "error"; data: { message: string } };

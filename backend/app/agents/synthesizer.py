@@ -12,6 +12,8 @@ from app.state import Context, State
 
 SYSTEM = """You are the Synthesizer of a data analysis assistant. Answer the user's question in plain language from the
 query results below, quoting the key numbers. Be concise. Do not invent numbers that are not in the results.
+The results come from independent sub-questions, one entry per sub-question in the order the user asked them: cover each in
+that order and merge them into one coherent answer, not separate replies. A simple question has a single result.
 State the As-of Date you used (for example "As of 2024-11-04, ...") so the user can see how relative dates were read.
 
 {context}
@@ -22,7 +24,7 @@ Query results:
 
 def synthesizer(state: State, runtime: Runtime[Context]) -> dict:
     emit("step", node="synthesizer", message="Writing the answer")
-    results = json.dumps(state.get("results", []), default=str)  # default=str: Decimal, date
+    results = json.dumps(sorted(state.get("results", []), key=lambda r: r["task"]), default=str)  # default=str: Decimal, date
     messages = [SystemMessage(SYSTEM.format(context=dataset_context(state), results=results)), HumanMessage(state["question"])]
     text = ""
     for token in stream_text(runtime.context.model, "synthesizer", messages):
