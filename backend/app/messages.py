@@ -3,14 +3,15 @@
 import logging
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
-from app import chats, schema_profile
+from app import schema_profile
+from app.deps import existing_chat
 from app.events import format_sse
 from app.sql_guard import SqlRejected
-from app.state import Context, turn_input
+from app.state import Context, DatasetInfo, turn_input
 
 router = APIRouter()
 log = logging.getLogger(__name__)
@@ -27,16 +28,16 @@ class MessageIn(BaseModel):
 
 
 @router.post("/chats/{chat_id}/messages")
-def post_message(chat_id: str, body: MessageIn, request: Request):
+def post_message(body: MessageIn, request: Request, chat: dict = Depends(existing_chat)):
     settings, model_factory = request.app.state.settings, request.app.state.model_factory
-    chat = chats.get_chat(settings, chat_id)
-    if chat is None:
-        raise HTTPException(404, "Chat not found")
     state = turn_input(
-        body.question,
-        body.as_of_date.isoformat() if body.as_of_date else "",
-        chat["dataset_notes"],
-        schema_profile.render_for_prompt(chat["schema_profile"]),
+        DatasetInfo(
+            question=body.question,
+            as_of_date=body.as_of_date.isoformat() if body.as_of_date else "",
+            dataset_notes=chat["dataset_notes"],
+            schema_profile=schema_profile.render_for_prompt(chat["schema_profile"]),
+            history="",
+        )
     )
     config = {"configurable": {"thread_id": str(chat["id"])}}  # one checkpointed thread per Chat
 

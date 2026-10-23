@@ -7,7 +7,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage
 from pydantic import BaseModel
 
-from app.state import HISTORY_TURNS, DatasetInfo, Turn
+from app.state import HISTORY_TURNS, AnalystResult, DatasetInfo, State, Turn
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -38,6 +38,11 @@ def stream_text(model: BaseChatModel, role: str, messages: list[BaseMessage]) ->
     for chunk in model.stream(messages, config=role_config(role)):
         if chunk.text:
             yield chunk.text
+
+
+def ordered_results(state: State) -> list[AnalystResult]:
+    """The SQL Analysts' results in the order the user asked (parallel analysts finish in any order)."""
+    return sorted(state.get("results", []), key=lambda r: r["task"])
 
 
 def render_history(turns: list[Turn]) -> str:

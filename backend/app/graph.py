@@ -16,11 +16,11 @@ from app.agents.orchestrator import orchestrator
 from app.agents.record_turn import record_turn
 from app.agents.sql_analyst import sql_analyst
 from app.agents.synthesizer import synthesizer
-from app.state import Context, State
+from app.state import DATASET_INFO_KEYS, Context, State
 
 
 def fan_out(state: State) -> list[Send]:
-    shared = {k: state[k] for k in ("question", "as_of_date", "dataset_notes", "schema_profile", "history")}
+    shared = {k: state[k] for k in DATASET_INFO_KEYS}
     return [Send("sql_analyst", {**shared, "task": i, "sub_question": q}) for i, q in enumerate(state["sub_questions"])]
 
 

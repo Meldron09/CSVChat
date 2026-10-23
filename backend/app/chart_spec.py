@@ -8,12 +8,14 @@ Pie: `x_key` names the slice, the one series is its size. Scatter: `x_key` and t
 """
 
 import math
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
 MAX_CHARTS = 3  # per Answer
 MAX_ROWS = 200
+
+ChartSpecData = dict[str, Any]  # a validated spec as stored in the state and sent to the client: `ChartSpec.model_dump()`
 
 
 class Series(BaseModel):

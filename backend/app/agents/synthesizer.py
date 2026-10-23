@@ -6,7 +6,8 @@ import re
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.runtime import Runtime
 
-from app.agents.common import dataset_context, stream_text
+from app.agents.common import dataset_context, ordered_results, stream_text
+from app.agents.sql_analyst import MAX_RETRIES
 from app.events import emit
 from app.state import Context, State
 
@@ -39,9 +40,9 @@ def charts_block(state: State) -> str:
 
 def synthesizer(state: State, runtime: Runtime[Context]) -> dict:
     emit("step", node="synthesizer", message="Writing the answer")
-    ordered = sorted(state.get("results", []), key=lambda r: r["task"])  # parallel analysts finish in any order: merge in the order asked
-    results = [r for r in ordered if not r.get("error")]
-    failed = [r for r in ordered if r.get("error")]
+    ordered = ordered_results(state)  # merge in the order asked
+    results = [r for r in ordered if not r["error"]]
+    failed = [r for r in ordered if r["error"]]
     if failed and not results:  # nothing to synthesize: report plainly without asking the model, so it cannot invent an answer
         text = f"As of {state['as_of_date']}, I could not answer this question.\n" + "".join(_failure_line(r) for r in failed)
         emit("token", text=text)
@@ -53,7 +54,7 @@ def synthesizer(state: State, runtime: Runtime[Context]) -> dict:
         for token in stream_text(runtime.context.model, "synthesizer", messages):
             text += token
             emit("token", text=token)
-    if any(r.get("truncated") for r in results) and not re.search(r"1,?000|truncat", text):  # same guarantee for the row cap
+    if any(r["truncated"] for r in results) and not re.search(r"1,?000|truncat", text):  # same guarantee for the row cap
         suffix = "\n\n(Note: a query returned more than 1,000 rows; only the first 1,000 were used.)"
         text += suffix
         emit("token", text=suffix)
@@ -66,4 +67,4 @@ def synthesizer(state: State, runtime: Runtime[Context]) -> dict:
 
 
 def _failure_line(r) -> str:
-    return f"- \"{r['sub_question']}\" failed after 3 attempts. Last query: {r['sql']} Database error: {r['error']}\n"
+    return f"- \"{r['sub_question']}\" failed after {MAX_RETRIES + 1} attempts. Last query: {r['sql']} Database error: {r['error']}\n"

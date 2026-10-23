@@ -6,7 +6,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.runtime import Runtime
 from pydantic import BaseModel, Field, ValidationError
 
-from app.agents.common import call_structured, dataset_context
+from app.agents.common import call_structured, dataset_context, ordered_results
 from app.chart_spec import MAX_CHARTS, ChartSpec
 from app.events import emit
 from app.state import Context, State
@@ -38,8 +38,7 @@ class ChartPlan(BaseModel):
 
 
 def chart_builder(state: State, runtime: Runtime[Context]) -> dict:
-    # failed analysts (error set, no rows) are skipped; parallel ones finish in any order, so sort by task
-    results = sorted((r for r in state.get("results", []) if r["rows"] and not r.get("error")), key=lambda r: r["task"])
+    results = [r for r in ordered_results(state) if r["rows"] and not r["error"]]  # failed analysts have no rows
     if not results:
         return {}
     emit("step", node="chart_builder", message="Deciding whether charts are warranted")

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from app.agents.common import call_structured, dataset_context
 from app.events import emit
 from app.sql_guard import SqlError, run_sql
-from app.state import AnalystInput, Context
+from app.state import AnalystInput, AnalystResult, Context
 
 SYSTEM = """You are a SQL analyst. Write ONE PostgreSQL SELECT (or WITH ... SELECT) query that answers the sub-question.
 Query only the Tables in the Schema Profile, with unqualified table names (no schema prefix), joining on the listed Relationships.
@@ -34,18 +34,28 @@ def sql_analyst(task: AnalystInput, runtime: Runtime[Context]) -> dict:
     ctx, sub_question = runtime.context, task["sub_question"]
     emit("step", node="sql_analyst", task=task["task"], message=f"Task {task['task'] + 1}: writing SQL for: {sub_question}")
     messages = [SystemMessage(SYSTEM.format(context=dataset_context(task))), HumanMessage(sub_question)]
+    result = error = None
     for attempt in range(MAX_RETRIES + 1):
         query = call_structured(ctx.model, "sql_analyst", SqlQuery, messages)
         emit("sql", task=task["task"], sub_question=sub_question, sql=query.sql)
         try:
             result = run_sql(ctx.settings, ctx.chat_id, query.sql)
+            break
         except SqlError as e:
             error = str(e)
-            if attempt == MAX_RETRIES:
-                break
-            emit("step", node="sql_analyst", task=task["task"], message=f"Query failed, retrying ({attempt + 1}/{MAX_RETRIES}): {error.splitlines()[0]}")
-            messages = [*messages, HumanMessage(f"Your query failed.\nQuery: {query.sql}\nDatabase error: {error}\nReturn a corrected query.")]
-        else:
-            row = {"task": task["task"], "sub_question": sub_question, "sql": query.sql, "columns": result.columns, "rows": result.rows}
-            return {"results": [{**row, "truncated": result.truncated, "error": None}]}
-    return {"results": [{"task": task["task"], "sub_question": sub_question, "sql": query.sql, "columns": [], "rows": [], "truncated": False, "error": error}]}
+            if attempt < MAX_RETRIES:
+                emit("step", node="sql_analyst", task=task["task"], message=f"Query failed, retrying ({attempt + 1}/{MAX_RETRIES}): {error.splitlines()[0]}")
+                messages = [*messages, HumanMessage(f"Your query failed.\nQuery: {query.sql}\nDatabase error: {error}\nReturn a corrected query.")]
+    return {
+        "results": [
+            AnalystResult(
+                task=task["task"],
+                sub_question=sub_question,
+                sql=query.sql,
+                columns=result.columns if result else [],
+                rows=result.rows if result else [],
+                truncated=result.truncated if result else False,
+                error=None if result else error,
+            )
+        ]
+    }
