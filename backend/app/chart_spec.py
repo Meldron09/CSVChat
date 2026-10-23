@@ -3,7 +3,9 @@
 JSON shape (`ChartSpec.model_dump()`):
     {"type": "line"|"bar"|"pie"|"scatter", "title": str, "x_key": str, "x_label": str, "y_label": str,
      "series": [{"key": str, "label": str}],      # one or more value columns (exactly one for pie and scatter)
-     "data": [{x_key: str|number, <series key>: number, ...}]}   # inline rows
+     "data": [{x_key: str|number, <series key>: number|null, ...}]}   # inline rows, at most MAX_ROWS
+A series needs at least one non-null value somewhere in `data` (a key no row has would draw an empty chart); a null or
+missing value in a single row is a legitimate gap.
 Pie: `x_key` names the slice, the one series is its size. Scatter: `x_key` and the series key are both numeric.
 """
 
@@ -13,7 +15,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, model_validator
 
 MAX_CHARTS = 3  # per Answer
-MAX_ROWS = 200
+# Rows per chart. Sized for a daily series (365 points a year, so 5+ years fit) while still bounding what is stored in
+# the checkpoint and sent in the `answer` event: at most MAX_ROWS rows x 5 series per chart, a few hundred KB.
+MAX_ROWS = 2000
 
 ChartSpecData = dict[str, Any]  # a validated spec as stored in the state and sent to the client: `ChartSpec.model_dump()`
 
@@ -46,4 +50,7 @@ class ChartSpec(BaseModel):
                     raise ValueError(f"series {s.key!r} must be numeric in every row, got {v!r}")
                 if self.type == "pie" and v is not None and v < 0:
                     raise ValueError("pie values must not be negative")
+        for s in self.series:
+            if all(row.get(s.key) is None for row in self.data):
+                raise ValueError(f"series {s.key!r} has no value in any row (is the key right?)")
         return self

@@ -51,6 +51,10 @@ def test_no_chart_when_text_says_it_better(chat, ask, fake_model):
         line(data=[]),
         line(series=[]),
         line(data=[{"month": "2024-01", "revenue": "lots"}]),
+        line(series=[{"key": "revnue", "label": "Revenue"}]),  # series key (a typo) that no row has: would draw nothing
+        line(series=[{"key": "revenue", "label": "R"}, {"key": "cost", "label": "C"}]),  # second series key in no row
+        line(data=[{"month": "2024-01", "revenue": None}, {"month": "2024-02", "revenue": None}]),  # series with no value at all
+        line(data=[{"month": f"d{i}", "revenue": i} for i in range(2001)]),  # over the row cap
         line(data=[{"revenue": 2}]),  # row without the x value
         line(type="pie", series=[{"key": "revenue", "label": "R"}, {"key": "month", "label": "M"}]),
         line(type="scatter"),  # x values are text
@@ -95,3 +99,27 @@ def test_all_chart_types_arrive_in_the_answer(chat, ask, fake_model, spec):
     fake_model.script("chart_builder", {"charts": [spec]})
     (chart,) = ask(chat, "Show me")[-1][1]["charts"]
     assert chart["type"] == spec["type"] and chart["data"] == spec["data"]
+
+
+def daily(n: int, **over) -> dict:
+    return line(title="Daily revenue", data=[{"month": f"day-{i:04d}", "revenue": i * 1.5} for i in range(n)], **over)
+
+
+@pytest.mark.parametrize("points", [365, 730, 2000])
+def test_a_daily_series_of_a_year_or_more_is_a_valid_line_chart(chat, ask, fake_model, points):
+    fake_model.script("chart_builder", {"charts": [daily(points)]})
+    events = ask(chat, "Daily revenue trend")
+
+    (chart,) = events[-1][1]["charts"]
+    assert chart["type"] == "line" and len(chart["data"]) == points
+    assert all(not m.startswith("Rejected") for e, d in events if e == "step" for m in [d["message"]])
+
+
+def test_legitimate_gaps_still_validate(chat, ask, fake_model):
+    gappy = line(
+        series=[{"key": "revenue", "label": "Revenue"}, {"key": "cost", "label": "Cost"}],
+        data=[{"month": "2024-01", "revenue": 1, "cost": None}, {"month": "2024-02", "revenue": None, "cost": 2}, {"month": "2024-03", "revenue": 3}],
+    )
+    fake_model.script("chart_builder", {"charts": [gappy]})
+    (chart,) = ask(chat, "Revenue and cost")[-1][1]["charts"]
+    assert [r.get("cost") for r in chart["data"]] == [None, 2, None]

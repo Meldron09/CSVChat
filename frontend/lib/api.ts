@@ -1,3 +1,5 @@
+import type { ChartSpec } from "./chart-spec";
+
 // Server-side only: the frontend's server talks to the backend over the compose network.
 // The browser reaches the backend through the streaming proxy at /api/* (app/api/[...path]/route.ts).
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
@@ -44,7 +46,8 @@ export type TranscriptTurn = {
   as_of_date: string;
   queries: { task: number; sub_question: string; sql: string; error: string | null }[];
   answer: string;
-  charts: unknown[];
+  charts: ChartSpec[];
+  error?: string | null; // set when the turn failed (an `error` event): no answer, the question and error text are kept
 };
 
 export type Chat = {
@@ -61,7 +64,7 @@ export type ChatEvent =
   | { event: "step"; data: { node: string; message: string; task?: number } } // task: 0-based parallel SQL Analyst index
   | { event: "sql"; data: { task: number; sub_question: string; sql: string } }
   | { event: "token"; data: { text: string } }
-  | { event: "answer"; data: { text: string; as_of_date: string | null; charts: unknown[] } }
+  | { event: "answer"; data: { text: string; as_of_date: string | null; charts: ChartSpec[] } }
   | { event: "error"; data: { message: string } };
 
 export async function createChat(): Promise<{ id: string }> {

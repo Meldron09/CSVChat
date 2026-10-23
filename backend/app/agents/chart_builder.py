@@ -7,7 +7,7 @@ from langgraph.runtime import Runtime
 from pydantic import BaseModel, Field, ValidationError
 
 from app.agents.common import call_structured, dataset_context, ordered_results
-from app.chart_spec import MAX_CHARTS, ChartSpec
+from app.chart_spec import MAX_CHARTS, MAX_ROWS, ChartSpec
 from app.events import emit
 from app.state import Context, State
 
@@ -23,11 +23,12 @@ Each chart is an object:
  "data": [{"<x_key>": "2024-01", "<series key>": 123.4}, ...]}
 Pie and scatter take exactly one series. Pie: x_key is the slice name. Scatter: x and y are both numeric.
 Titles and axis labels must be human readable (units included); sort data rows sensibly (time ascending).
+Every series key must hold a value in at least one data row. At most __ROWS__ data rows per chart.
 
 {context}
 
 Query results:
-{results}""".replace("__MAX__", str(MAX_CHARTS))
+{results}""".replace("__MAX__", str(MAX_CHARTS)).replace("__ROWS__", f"{MAX_ROWS:,}")
 
 
 class ChartPlan(BaseModel):

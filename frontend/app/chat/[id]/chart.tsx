@@ -1,6 +1,7 @@
 "use client";
 
 import { Component, type ReactNode } from "react";
+import { CHART_TYPES, type ChartSpec } from "@/lib/chart-spec";
 import {
   Bar,
   BarChart,
@@ -19,28 +20,20 @@ import {
   YAxis,
 } from "recharts";
 
-/** A Chart Spec as the backend sends it (backend/app/chart_spec.py). Never code: the frontend only draws it. */
-export type ChartSpec = {
-  type: "line" | "bar" | "pie" | "scatter";
-  title: string;
-  x_key: string;
-  x_label: string;
-  y_label: string;
-  series: { key: string; label: string }[];
-  data: Record<string, string | number | null>[];
-};
-
 const COLORS = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#65a30d"];
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const isStr = (v: unknown): v is string => typeof v === "string" && v !== "";
 
 /** The spec if it is well formed enough to draw, else null (the backend validates too; this keeps a bad spec from crashing the page). */
 export function parseSpec(raw: unknown): ChartSpec | null {
-  if (!isObj(raw) || !["line", "bar", "pie", "scatter"].includes(raw.type as string)) return null;
+  if (!isObj(raw) || !(CHART_TYPES as readonly unknown[]).includes(raw.type)) return null;
   const { title, x_key, x_label, y_label, series, data } = raw;
   if (!isStr(title) || !isStr(x_key) || !isStr(x_label) || !isStr(y_label)) return null;
   if (!Array.isArray(series) || series.length === 0 || !series.every((s) => isObj(s) && isStr(s.key) && isStr(s.label))) return null;
   if (!Array.isArray(data) || data.length === 0 || !data.every(isObj)) return null;
+  // like the backend: every row has an x value and every series has at least one numeric value (else it draws nothing)
+  if (!data.every((r) => r[x_key] != null)) return null;
+  if (!series.every((s) => data.some((r) => typeof r[s.key as string] === "number"))) return null;
   return raw as ChartSpec;
 }
 
