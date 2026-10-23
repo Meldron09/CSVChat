@@ -14,6 +14,8 @@ class Settings:
     readonly_password: str
     ollama_model: str
     ollama_base_url: str
+    upload_dir: str
+    max_upload_bytes: int
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -26,6 +28,8 @@ class Settings:
             readonly_password=env("DB_READONLY_PASSWORD", "readonly"),
             ollama_model=env("OLLAMA_MODEL", "gpt-oss:20b-cloud"),
             ollama_base_url=env("OLLAMA_BASE_URL", "http://localhost:11434"),
+            upload_dir=env("UPLOAD_DIR", "./data/uploads"),  # raw uploads, kept untouched
+            max_upload_bytes=int(env("MAX_UPLOAD_BYTES", str(200 * 1024 * 1024))),
         )
 
     def _dsn(self, role: str, password: str) -> str:

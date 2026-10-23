@@ -7,6 +7,8 @@ dependencies = [
     "uvicorn",
     "psycopg[binary]",
     "langchain-ollama",
+    "pandas>=3.1.0",
+    "python-multipart>=0.0.32",
 ]
 
 [dependency-groups]

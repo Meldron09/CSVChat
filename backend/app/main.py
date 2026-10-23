@@ -1,10 +1,10 @@
 from contextlib import asynccontextmanager
 from typing import Callable
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Form, HTTPException, UploadFile
 from langchain_core.language_models import BaseChatModel
 
-from app import chats
+from app import chats, ingestion
 from app.model import build_model
 from app.settings import Settings
 
@@ -34,6 +34,26 @@ def create_app(
         if chat is None:
             raise HTTPException(404, "Chat not found")
         return chat
+
+    @app.post("/chats/{chat_id}/files")
+    def upload_files(chat_id: str, files: list[UploadFile], dataset_notes: str | None = Form(None)):
+        """Ingest each CSV (blocking) into the Chat's schema. Files are processed in order; a rejected file
+        stops the request, but files before it stay loaded and reported."""
+        chat = chats.get_chat(settings, chat_id)
+        if chat is None:
+            raise HTTPException(404, "Chat not found")
+        if bad := [f.filename for f in files if not (f.filename or "").lower().endswith(".csv")]:
+            raise HTTPException(415, f"Not a CSV file: {', '.join(map(str, bad))} (expected .csv)")
+        reports = []
+        for f in files:
+            try:
+                report = ingestion.ingest(settings, str(chat["id"]), chats.schema_name(chat["id"]), f.filename, f.file)
+            except ingestion.IngestionError as e:
+                raise HTTPException(e.status, str(e)) from e
+            chats.save_ingestion(settings, chat["id"], [report], dataset_notes)
+            reports.append(report)
+        # schema_profile is filled in by Relationship inference (#4); null until then
+        return {"reports": reports, "schema_profile": chats.get_chat(settings, chat_id)["schema_profile"]}
 
     return app
 

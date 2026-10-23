@@ -29,3 +29,7 @@ Roles and the `app` / `checkpoints` schemas are created by `db/init.sh` only on 
 ## Model
 
 The chat model is built in one place, `app/model.py:build_model`, and `create_app(model_factory=...)` lets tests substitute a scripted fake.
+
+## Ingestion
+
+`POST /chats/{id}/files` (multipart: `files` one or more `.csv`, optional `dataset_notes`) blocks until every file is cleaned and loaded; see `app/ingestion.py`. Errors: 404 unknown Chat, 415 non-CSV, 413 over `MAX_UPLOAD_BYTES` (default 200MB), 422 empty/unparseable. The raw upload is kept untouched in `UPLOAD_DIR/<chat id>/<table>.csv` (compose volume `uploads`). The sample-dataset test reads `ONLINE_SHOP_DIR` (skipped if the directory is missing).
