@@ -4,7 +4,7 @@ from typing import Callable
 from fastapi import FastAPI, Form, HTTPException, UploadFile
 from langchain_core.language_models import BaseChatModel
 
-from app import chats, ingestion, schema_profile
+from app import chats, ingestion, messages, schema_profile
 from app.model import build_model
 from app.settings import Settings
 
@@ -22,7 +22,8 @@ def create_app(
 
     app = FastAPI(lifespan=lifespan)
     app.state.settings = settings
-    app.state.model_factory = model_factory  # used by the agent graph in later tickets
+    app.state.model_factory = model_factory  # the single model construction point; called per message
+    app.include_router(messages.router)
 
     @app.post("/chats")
     def create_chat():

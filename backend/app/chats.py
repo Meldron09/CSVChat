@@ -1,5 +1,6 @@
 """Chat store: the `app.chats` table plus the per-Chat Postgres schema (ADR-0002)."""
 
+import hmac
 import uuid
 
 import psycopg
@@ -7,7 +8,7 @@ import psycopg.rows
 from psycopg import sql
 from psycopg.types.json import Jsonb
 
-from app.settings import READONLY_ROLE, Settings
+from app.settings import Settings
 
 CREATE_CHATS = """
 CREATE TABLE IF NOT EXISTS app.chats (
@@ -26,25 +27,35 @@ def schema_name(chat_id: uuid.UUID) -> str:
     return f"chat_{chat_id.hex}"
 
 
+def _chat_password(settings: Settings, chat_id: uuid.UUID) -> str:
+    """HMAC of the chat id: a Chat's role is reachable only by whoever holds the server secret, never from SQL run as another role."""
+    return hmac.new(settings.chat_role_secret.encode(), schema_name(chat_id).encode(), "sha256").hexdigest()
+
+
+def chat_dsn(settings: Settings, chat_id: uuid.UUID) -> str:
+    """DSN of the Chat's own read-only login role (its name is the schema name)."""
+    return settings.dsn(schema_name(chat_id), _chat_password(settings, chat_id))
+
+
 def init_store(settings: Settings) -> None:
     with psycopg.connect(settings.owner_dsn) as conn:
         conn.execute(CREATE_CHATS)
 
 
 def create_chat(settings: Settings) -> uuid.UUID:
+    """One transaction: the Chat's schema, its read-only login role (USAGE + SELECT on that schema only, ADR-0002), the row."""
     chat_id = uuid.uuid4()
-    schema = sql.Identifier(schema_name(chat_id))
-    ro = sql.Identifier(READONLY_ROLE)
-    with psycopg.connect(settings.owner_dsn) as conn:  # one transaction: schema, grants, row
+    name = schema_name(chat_id)
+    schema = role = sql.Identifier(name)
+    password = _chat_password(settings, chat_id)
+    with psycopg.connect(settings.owner_dsn) as conn:
         conn.execute(sql.SQL("CREATE SCHEMA {}").format(schema))
-        conn.execute(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(schema, ro))
-        # Tables the owner creates later (ingestion) become readable by the read-only role.
-        conn.execute(
-            sql.SQL("ALTER DEFAULT PRIVILEGES IN SCHEMA {} GRANT SELECT ON TABLES TO {}").format(schema, ro)
-        )
-        conn.execute(
-            "INSERT INTO app.chats (id, schema_name) VALUES (%s, %s)", (chat_id, schema_name(chat_id))
-        )
+        conn.execute(sql.SQL("CREATE ROLE {} LOGIN PASSWORD {}").format(role, password))
+        conn.execute(sql.SQL("GRANT CONNECT ON DATABASE {} TO {}").format(sql.Identifier(settings.db_name), role))
+        conn.execute(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(schema, role))
+        # Tables the owner creates later (ingestion) become readable by the Chat's role.
+        conn.execute(sql.SQL("ALTER DEFAULT PRIVILEGES IN SCHEMA {} GRANT SELECT ON TABLES TO {}").format(schema, role))
+        conn.execute("INSERT INTO app.chats (id, schema_name) VALUES (%s, %s)", (chat_id, name))
     return chat_id
 
 

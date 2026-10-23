@@ -18,17 +18,48 @@ The DB connection is read from env, so a checkout running its own stack just set
 | --- | --- | --- |
 | `POSTGRES_PORT` | `55432` | host port of the compose Postgres (also what pytest connects to) |
 | `POSTGRES_HOST` | `localhost` | Postgres host |
-| `DB_OWNER_PASSWORD` / `DB_READONLY_PASSWORD` | `owner` / `readonly` | role passwords (dev defaults) |
+| `DB_OWNER_PASSWORD` | `owner` | owner role password (dev default) |
+| `DB_CHAT_ROLE_SECRET` | `dev-chat-role-secret` | secret the per-Chat read-only role passwords are derived from |
+| `SQL_TIMEOUT_MS` | `10000` | statement timeout for generated SQL |
 | `OLLAMA_MODEL` / `OLLAMA_BASE_URL` | `gpt-oss:20b-cloud` / `http://localhost:11434` | the chat model (`host.docker.internal` inside compose) |
 
 `BACKEND_PORT`, `FRONTEND_PORT` and `COMPOSE_PROJECT_NAME` control the other host ports and the compose project name, so several checkouts can run concurrently, e.g.
 `COMPOSE_PROJECT_NAME=csvchat2 POSTGRES_PORT=55433 BACKEND_PORT=8001 FRONTEND_PORT=3001 make test`.
 
-Roles and the `app` / `checkpoints` schemas are created by `db/init.sh` only on a fresh volume; after changing it run `docker compose down -v`.
+Roles and the `app` / `checkpoints` schemas are created by `db/init.sh` only on a fresh volume; after changing it run `docker compose down -v` (needed once after pulling the per-Chat role change: the owner role now has `CREATEROLE`).
 
 ## Model
 
-The chat model is built in one place, `app/model.py:build_model`, and `create_app(model_factory=...)` lets tests substitute a scripted fake.
+The chat model is built in one place, `app/model.py:build_model`; the messages route calls `app.state.model_factory(app.state.settings)` per message, and `create_app(model_factory=...)` lets tests substitute a scripted fake.
+Agents get structured output via tool calling (`with_structured_output(..., method="function_calling")` in `app/agents/common.py`), not Ollama's `format=` JSON schema, because gpt-oss ignores `format`.
+
+## Asking questions
+
+`POST /chats/{id}/messages` with `{"question": str, "as_of_date": "YYYY-MM-DD"}` (404 unknown Chat, 422 bad body) streams `text/event-stream`. Each frame is `event: <name>` + `data: <json>`:
+
+| event | data |
+| --- | --- |
+| `step` | `{node, message}`: progress (`orchestrator`, `sql_analyst`, `synthesizer`) |
+| `sql` | `{sub_question, sql}`: a query, just before it runs |
+| `token` | `{text}`: next piece of the Answer |
+| `answer` | `{text, as_of_date, charts}`: the final Answer (`charts` always `[]` for now; the only event that carries charts) |
+| `error` | `{message}`: terminal; the run stopped |
+
+The graph (`app/graph.py`) is Orchestrator, SQL Analyst (one per sub-question via `Send`), Synthesizer, with typed state in `app/state.py`; each agent lives in `app/agents/`. Nodes send events with `events.emit(event, **data)` (works from parallel branches). All generated SQL runs through `sql_guard.run_sql`: sqlglot SELECT/WITH-only check, then the Chat's own read-only role (ADR-0002). The As-of Date, Dataset Notes and rendered Schema Profile go into every agent prompt.
+
+## Scripted fake model (tests)
+
+`tests/fake_model.py:FakeChatModel` replaces the LLM; the `fake_model` fixture (conftest) is injected through `create_app(model_factory=...)` into the `client` fixture, and `ask(chat_id, question, as_of_date="2024-11-04")` returns the parsed SSE events.
+
+```python
+fake_model.script("orchestrator", {"sub_questions": ["Total revenue?"]})  # structured output: dict or pydantic instance
+fake_model.script("sql_analyst", {"sql": "SELECT sum(total_price) FROM orders"})
+fake_model.script("synthesizer", "Revenue is 60.75.")                      # text, streamed word by word
+events = ask(chat_id, "What is the revenue?")
+assert "2024-11-04" in fake_model.prompt_text("sql_analyst")               # also fake_model.prompts(role)
+```
+
+Roles are the `role:<name>` tags set by `agents/common.py` (`orchestrator`, `sql_analyst`, `synthesizer`; a new agent just passes its own name). Responses are consumed per role in call order; an `Exception` is raised by the call; a callable receives the messages and returns the response (to tell parallel calls of one role apart). An unscripted call fails with an AssertionError.
 
 ## Ingestion
 

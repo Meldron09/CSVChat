@@ -8,7 +8,6 @@ services:
       POSTGRES_DB: csvchat
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-owner}
-      DB_READONLY_PASSWORD: ${DB_READONLY_PASSWORD:-readonly}
     ports:
       - "${POSTGRES_PORT:-55432}:5432"
     volumes:
@@ -28,7 +27,7 @@ services:
       POSTGRES_PORT: "5432"
       POSTGRES_DB: csvchat
       DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-owner}
-      DB_READONLY_PASSWORD: ${DB_READONLY_PASSWORD:-readonly}
+      DB_CHAT_ROLE_SECRET: ${DB_CHAT_ROLE_SECRET:-dev-chat-role-secret}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-gpt-oss:20b-cloud}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       UPLOAD_DIR: /data/uploads
