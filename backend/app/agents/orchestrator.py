@@ -12,6 +12,7 @@ MAX_SUB_QUESTIONS = 4  # fan-out cap: each sub-question is one parallel SQL Anal
 
 SYSTEM = """You are the Orchestrator of a data analysis assistant. The user asks a question about their uploaded CSV Tables.
 Split it into independent, self-contained sub-questions; each is answered by a separate SQL analyst with ONE query, in parallel.
+Each sub-question is a plain-English string (a question, never SQL; the analyst writes the SQL).
 - A simple question, or one that is a single analysis (even over several Tables), gives exactly ONE sub-question: the question rewritten.
 - A multi-part question ("revenue by month and the top 5 products") gives one sub-question per part, at most {max}. Merge closely related parts.
 - Sub-questions must not depend on each other's results, and must not repeat the same analysis.
@@ -28,7 +29,7 @@ class Plan(BaseModel):
 
     sub_questions: list[str] = Field(
         min_length=1,
-        description=f"Independent, self-contained sub-questions in the order the user asked them: one for a simple question, at most {MAX_SUB_QUESTIONS}.",
+        description=f"Plain-English strings (not SQL): independent, self-contained sub-questions in the order the user asked them: one for a simple question, at most {MAX_SUB_QUESTIONS}.",
     )
 
 
