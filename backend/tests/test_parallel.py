@@ -5,10 +5,7 @@ import threading
 import time
 
 import pytest
-from test_ingestion import SAMPLE_DIR, SAMPLE_ROWS, query, upload
-from test_messages import CUSTOMERS, ORDERS, loaded_chat, names  # noqa: F401  (loaded_chat is a fixture)
-
-from app.agents.orchestrator import MAX_SUB_QUESTIONS
+from helpers import SAMPLE_DIR, SAMPLE_ROWS, assert_valid_stream, names, upload
 
 PARTS = ["What is the total revenue?", "How many customers are there?", "What is the largest order?"]
 SQL_FOR = {
@@ -16,15 +13,6 @@ SQL_FOR = {
     PARTS[1]: "SELECT count(*) AS customers FROM customers",
     PARTS[2]: "SELECT max(total_price) AS largest FROM orders",
 }
-
-
-def assert_valid_stream(events):
-    """step/sql events (any task order) all precede the first token; `answer` is last; exactly one terminal event."""
-    kinds = names(events)
-    assert kinds[-1] == "answer" and kinds.count("answer") + kinds.count("error") == 1
-    first_token = kinds.index("token")
-    assert {"token", "answer"}.isdisjoint(kinds[:first_token]) and "step" not in kinds[first_token:] and "sql" not in kinds[first_token:]
-    assert kinds[first_token:-1] == ["token"] * (len(kinds) - first_token - 1)
 
 
 def test_multi_part_question_runs_sql_analysts_in_parallel_and_the_synthesizer_merges_them(loaded_chat, ask, fake_model):
@@ -67,24 +55,24 @@ def test_a_simple_question_runs_exactly_one_sql_analyst(loaded_chat, ask, fake_m
     assert [(d["task"], d["sub_question"]) for e, d in events if e == "sql"] == [(0, PARTS[0])]
 
 
-def test_the_orchestrator_is_told_how_to_decompose_and_the_fan_out_is_capped(loaded_chat, ask, fake_model):
-    too_many = [f"Part {i}?" for i in range(MAX_SUB_QUESTIONS + 2)]
+def test_the_orchestrator_is_told_how_to_decompose_and_the_fan_out_is_capped_at_4(loaded_chat, ask, fake_model):
+    too_many = [f"Part {i}?" for i in range(6)]
     fake_model.script("orchestrator", {"sub_questions": too_many})
-    for _ in range(MAX_SUB_QUESTIONS):
+    for _ in range(4):  # a fifth analyst would find nothing scripted and fail the stream
         fake_model.script("sql_analyst", {"sql": "SELECT 1 AS one"})
     fake_model.script("synthesizer", "ok")
     events = ask(loaded_chat, "everything")
 
     assert_valid_stream(events)
-    assert len(fake_model.prompts("sql_analyst")) == MAX_SUB_QUESTIONS == 4
+    assert len(fake_model.prompts("sql_analyst")) == 4
     assert sorted(d["task"] for e, d in events if e == "sql") == [0, 1, 2, 3]
-    assert any(f"answering the first {MAX_SUB_QUESTIONS}" in d["message"] for e, d in events if e == "step" and d["node"] == "orchestrator")
+    assert any("answering the first 4" in d["message"] for e, d in events if e == "step" and d["node"] == "orchestrator")
     prompt = fake_model.prompt_text("orchestrator")
     assert "ONE sub-question" in prompt and "at most 4" in prompt and "Relationships in the Schema Profile" in prompt
 
 
 @pytest.mark.skipif(not SAMPLE_DIR.is_dir(), reason=f"sample dataset not found at {SAMPLE_DIR}; set ONLINE_SHOP_DIR")
-def test_cross_file_question_joins_tables_through_the_inferred_relationships(client, settings, chat_id, ask, fake_model):
+def test_cross_file_question_joins_tables_through_the_inferred_relationships(client, query, chat_id, ask, fake_model):
     upload(client, chat_id, *[(name, SAMPLE_DIR / name) for name in SAMPLE_ROWS])
     sub_question = "Which 5 suppliers have the lowest average review rating on their products? Join reviews to products to suppliers."
     join = (  # lowest-rated suppliers: reviews -> products -> suppliers, through the Relationships
@@ -105,7 +93,7 @@ def test_cross_file_question_joins_tables_through_the_inferred_relationships(cli
 
     # the join ran against the real data and returned sensible rows: ratings in 1..5, ascending, at most 5 suppliers
     expected = query(  # same question phrased differently (IN-subquery instead of joins)
-        settings, chat_id,
+        chat_id,
         "SELECT s.supplier_id, s.supplier_name, a.avg_rating, a.n FROM suppliers s JOIN ("
         " SELECT p.supplier_id, round(avg(r.rating), 2) AS avg_rating, count(*) AS n FROM reviews r, products p"
         " WHERE p.product_id = r.product_id GROUP BY p.supplier_id) a ON a.supplier_id = s.supplier_id"

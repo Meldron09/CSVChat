@@ -1,44 +1,18 @@
 """Ingestion through the HTTP API against the compose Postgres: upload CSVs, assert Cleaning Reports and Tables."""
 
 import dataclasses
-import os
 import uuid
 from pathlib import Path
 
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
+from helpers import FIXTURES, SAMPLE_DIR, SAMPLE_ROWS, upload
 
-from app import chats
 from app.main import create_app
 
-FIXTURES = Path(__file__).parent / "fixtures"
-SAMPLE_DIR = Path(os.environ.get("ONLINE_SHOP_DIR", Path(__file__).resolve().parents[2] / "sample-data"))  # the bundled copy
-SAMPLE_ROWS = {  # file -> (table, rows)
-    "customers.csv": ("customers", 10000),
-    "orders.csv": ("orders", 15000),
-    "order_items.csv": ("order_items", 20000),
-    "products.csv": ("products", 2000),
-    "payment.csv": ("payment", 15000),
-    "shipments.csv": ("shipments", 15000),
-    "reviews.csv": ("reviews", 1106),
-    "suppliers.csv": ("suppliers", 100),
-}
 
-
-def upload(client, chat_id, *files, notes=None):
-    """files: (filename, bytes-or-Path) pairs."""
-    parts = [("files", (name, content.read_bytes() if isinstance(content, Path) else content)) for name, content in files]
-    return client.post(f"/chats/{chat_id}/files", files=parts, data={"dataset_notes": notes} if notes else None)
-
-
-def query(settings, chat_id, statement):
-    with psycopg.connect(chats.chat_dsn(settings, uuid.UUID(chat_id)), autocommit=True) as ro:  # also proves the Chat's role sees the Tables
-        ro.execute(f'SET search_path = "chat_{uuid.UUID(chat_id).hex}"')
-        return ro.execute(statement).fetchall()
-
-
-def test_dirty_csv_is_cleaned_and_flagged(client, settings, chat_id):
+def test_dirty_csv_is_cleaned_and_flagged(client, query, chat_id):
     res = upload(client, chat_id, ("dirty.csv", FIXTURES / "dirty.csv"), notes="Revenue = sum of price")
     assert res.status_code == 200
     report = res.json()["reports"][0]
@@ -58,23 +32,23 @@ def test_dirty_csv_is_cleaned_and_flagged(client, settings, chat_id):
     assert ("qty", "iqr") not in flags
 
     # flagged, never dropped; text normalized; nulls are NULLs
-    assert query(settings, chat_id, "SELECT count(*) FROM dirty WHERE price IN (9999, 0)") == [(2,)]
-    assert query(settings, chat_id, "SELECT city FROM dirty WHERE id IN (1, 3) ORDER BY id") == [("Paris",), ("New York",)]
-    assert query(settings, chat_id, "SELECT count(*) FROM dirty WHERE city IS NULL AND id = 6") == [(1,)]
+    assert query(chat_id, "SELECT count(*) FROM dirty WHERE price IN (9999, 0)") == [(2,)]
+    assert query(chat_id, "SELECT city FROM dirty WHERE id IN (1, 3) ORDER BY id") == [("Paris",), ("New York",)]
+    assert query(chat_id, "SELECT count(*) FROM dirty WHERE city IS NULL AND id = 6") == [(1,)]
     assert client.get(f"/chats/{chat_id}").json()["dataset_notes"] == "Revenue = sum of price"
 
 
-def test_latin1_semicolon_file_loads(client, settings, chat_id):
+def test_latin1_semicolon_file_loads(client, query, chat_id):
     report = upload(client, chat_id, ("latin1_semicolon.csv", FIXTURES / "latin1_semicolon.csv")).json()["reports"][0]
     assert (report["encoding"], report["delimiter"], report["rows_loaded"]) == ("latin-1", ";", 3)
-    assert query(settings, chat_id, "SELECT nom, ville, montant FROM latin1_semicolon ORDER BY id")[0] == ("José", "Zürich", 1.5)
+    assert query(chat_id, "SELECT nom, ville, montant FROM latin1_semicolon ORDER BY id")[0] == ("José", "Zürich", 1.5)
 
 
-def test_reupload_replaces_the_table_and_its_report(client, settings, chat_id):
+def test_reupload_replaces_the_table_and_its_report(client, query, chat_id):
     upload(client, chat_id, ("t.csv", b"a,b\n1,x\n2,y\n3,z\n"))
     second = upload(client, chat_id, ("T.CSV", b"a,b\n7,q\n"))  # same Table name, different case
     assert second.json()["reports"][0]["replaced"] is True
-    assert query(settings, chat_id, "SELECT a, b FROM t") == [(7, "q")]
+    assert query(chat_id, "SELECT a, b FROM t") == [(7, "q")]
     stored = client.get(f"/chats/{chat_id}").json()["cleaning_reports"]
     assert [(r["table"], r["rows_loaded"]) for r in stored] == [("t", 1)]
 
@@ -86,11 +60,11 @@ def test_files_can_be_added_later_in_a_chat(client, chat_id):
     assert sorted(r["table"] for r in stored) == ["a", "b", "c"]
 
 
-def test_tables_are_isolated_per_chat(client, settings, chat_id):
+def test_tables_are_isolated_per_chat(client, query, chat_id):
     upload(client, chat_id, ("mine.csv", b"x\n1\n"))
     other = client.post("/chats").json()["id"]
     with pytest.raises(psycopg.errors.UndefinedTable):
-        query(settings, other, "SELECT * FROM mine")
+        query(other, "SELECT * FROM mine")
 
 
 def test_non_csv_is_rejected_with_415(client, chat_id):
@@ -124,29 +98,29 @@ def test_raw_upload_is_kept_untouched(client, settings, chat_id):
     assert (Path(settings.upload_dir) / chat_id / "dirty.csv").read_bytes() == raw
 
 
-def test_multi_chunk_file_dedups_across_chunk_boundaries(client, settings, chat_id):
+def test_multi_chunk_file_dedups_across_chunk_boundaries(client, query, chat_id):
     n = 250_000  # 2.5 chunks of 100k rows
     lines = [f"{i},name {i % 7}" for i in range(n)]
     lines += [lines[5], lines[150_000], lines[10]]  # duplicates of rows in earlier chunks
     res = upload(client, chat_id, ("big.csv", ("id,name\n" + "\n".join(lines) + "\n").encode()))
     report = res.json()["reports"][0]
     assert (report["rows_read"], report["duplicates_removed"], report["rows_loaded"]) == (n + 3, 3, n)
-    assert query(settings, chat_id, "SELECT count(*), count(DISTINCT id) FROM big") == [(n, n)]
+    assert query(chat_id, "SELECT count(*), count(DISTINCT id) FROM big") == [(n, n)]
 
 
 @pytest.mark.skipif(not SAMPLE_DIR.is_dir(), reason=f"sample dataset not found at {SAMPLE_DIR}; set ONLINE_SHOP_DIR")
-def test_online_shop_sample_dataset(client, settings, chat_id):
+def test_online_shop_sample_dataset(client, query, chat_id):
     res = upload(client, chat_id, *[(name, SAMPLE_DIR / name) for name in SAMPLE_ROWS])
     assert res.status_code == 200
     reports = {r["table"]: r for r in res.json()["reports"]}
     for table, rows in SAMPLE_ROWS.values():
         assert reports[table]["rows_loaded"] == rows and reports[table]["duplicates_removed"] == 0
-        assert query(settings, chat_id, f"SELECT count(*) FROM {table}") == [(rows,)]
+        assert query(chat_id, f"SELECT count(*) FROM {table}") == [(rows,)]
 
     types = {
         (t, c): ty
         for t, c, ty in query(
-            settings, chat_id,
+            chat_id,
             "SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = current_schema()",
         )
     }
@@ -161,6 +135,6 @@ def test_online_shop_sample_dataset(client, settings, chat_id):
     flagged = items[("price_at_purchase", "non_positive")]
     assert flagged["count"] == 2
     assert sorted(s["order_item_id"] for s in flagged["samples"]) == [15001, 15002]
-    assert query(settings, chat_id, "SELECT count(*) FROM order_items WHERE price_at_purchase <= 0") == [(2,)]
+    assert query(chat_id, "SELECT count(*) FROM order_items WHERE price_at_purchase <= 0") == [(2,)]
     assert {o["column"] for o in reports["orders"]["outliers"]} == {"total_price"}
     assert next(o for o in reports["orders"]["outliers"])["count"] == 111

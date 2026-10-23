@@ -1,10 +1,14 @@
 import dataclasses
 import json
+import uuid
 
+import psycopg
 import pytest
 from fake_model import FakeChatModel
 from fastapi.testclient import TestClient
+from helpers import CUSTOMERS, NOTES, ORDERS, schema_of, upload
 
+from app import chats  # DELIBERATE EXCEPTION to "drive only the HTTP API": see chat_role_connect below
 from app.main import create_app
 from app.settings import Settings
 
@@ -46,3 +50,45 @@ def ask(client):
         return events
 
     return ask
+
+
+@pytest.fixture
+def loaded_chat(client, chat_id) -> str:
+    """A Chat with `orders` and `customers` Tables and Dataset Notes."""
+    assert upload(client, chat_id, ("orders.csv", ORDERS), ("customers.csv", CUSTOMERS), notes=NOTES).status_code == 200
+    return chat_id
+
+
+@pytest.fixture
+def sample_chat(client, chat_id) -> str:
+    """A Chat with the bundled Online Shop sample loaded through the one-click route."""
+    assert client.post(f"/chats/{chat_id}/sample").status_code == 200
+    return chat_id
+
+
+@pytest.fixture
+def chat_role_connect(settings):
+    """DELIBERATE EXCEPTION to the HTTP-only rule. Isolation is a property of the database (ADR-0002), so the tests
+    that prove it (test_isolation.py) and the ones that read loaded Tables back need a connection as the Chat's own
+    read-only login role. This fixture, with `query`, is the only place tests build such a connection."""
+
+    def connect(chat_id: str, login_as: str | None = None, **kw) -> psycopg.Connection:
+        """Connection as the Chat's role; `login_as`: another Chat's role name with this Chat's password (must fail)."""
+        dsn = chats.chat_dsn(settings, uuid.UUID(chat_id))
+        if login_as:
+            dsn = dsn.replace(schema_of(chat_id), schema_of(login_as))
+        return psycopg.connect(dsn, **kw)
+
+    return connect
+
+
+@pytest.fixture
+def query(chat_role_connect):
+    """query(chat_id, statement) -> rows, read as the Chat's own role (so it also proves that role sees the Tables)."""
+
+    def run(chat_id: str, statement: str) -> list[tuple]:
+        with chat_role_connect(chat_id, autocommit=True) as ro:
+            ro.execute(f'SET search_path = "{schema_of(chat_id)}"')
+            return ro.execute(statement).fetchall()
+
+    return run

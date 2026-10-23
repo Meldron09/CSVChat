@@ -1,29 +1,7 @@
 """Charts in Answers: Chart Builder + Chart Spec validation, through the HTTP API with the scripted fake model."""
 
 import pytest
-from test_ingestion import upload
-from test_messages import ORDERS
-
-from app.chart_spec import ChartSpec
-
-MONTHLY = "SELECT to_char(order_date, 'YYYY-MM') AS month, sum(total_price) AS revenue FROM orders GROUP BY 1 ORDER BY 1"
-
-
-def line(**over):
-    spec = {
-        "type": "line",
-        "title": "Monthly revenue",
-        "x_key": "month",
-        "x_label": "Month",
-        "y_label": "Revenue",
-        "series": [{"key": "revenue", "label": "Revenue"}],
-        "data": [{"month": "2024-01", "revenue": 10.5}, {"month": "2024-02", "revenue": 20.25}, {"month": "2024-03", "revenue": 30}],
-    }
-    return {**spec, **over}
-
-
-def bar(**over):
-    return line(**{"type": "bar", "title": "Revenue by month", **over})
+from helpers import MONTHLY, ORDERS, bar, line, upload
 
 
 @pytest.fixture
@@ -43,7 +21,7 @@ def test_trend_question_returns_a_line_chart_in_the_answer(chat, ask, fake_model
     assert answer[0] == "answer" and answer[1]["text"].startswith("Revenue grew every month.")
     (chart,) = answer[1]["charts"]
     assert chart["type"] == "line" and chart["title"] == "Monthly revenue" and len(chart["data"]) == 3
-    assert ChartSpec.model_validate(chart).model_dump() == chart
+    assert chart == line()  # arrives exactly as the Chart Builder produced it (validation changes nothing)
     assert "2024-02" in fake_model.prompt_text("chart_builder")  # the query result reached the Chart Builder
     assert "Monthly revenue" in fake_model.prompt_text("synthesizer")  # and the Synthesizer knows what is drawn
 
@@ -113,5 +91,7 @@ def test_a_chart_builder_that_never_calls_the_tool_does_not_fail_the_answer(chat
         line(series=[{"key": "revenue", "label": "A"}, {"key": "cost", "label": "B"}], data=[{"month": "x", "revenue": 1, "cost": 2}]),
     ],
 )
-def test_all_chart_types_validate(spec):
-    assert ChartSpec.model_validate(spec).type == spec["type"]
+def test_all_chart_types_arrive_in_the_answer(chat, ask, fake_model, spec):
+    fake_model.script("chart_builder", {"charts": [spec]})
+    (chart,) = ask(chat, "Show me")[-1][1]["charts"]
+    assert chart["type"] == spec["type"] and chart["data"] == spec["data"]

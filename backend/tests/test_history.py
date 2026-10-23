@@ -1,23 +1,12 @@
 """Resume and follow-ups: the checkpointed transcript, GET /chats/{id} after a restart, and the history window,
 through the HTTP API with the scripted fake model."""
 
-import pytest
 from fastapi.testclient import TestClient
-from test_charts import MONTHLY, bar
-from test_ingestion import upload
-from test_messages import CUSTOMERS, NOTES, ORDERS, names
+from helpers import MONTHLY, NOTES, ORDERS, TOTAL, bar, names, upload
 
 from app.main import create_app
-from app.state import HISTORY_TURNS
 
 TITLE = "Chart-title-that-only-the-spec-carries"
-TOTAL = "SELECT sum(total_price) AS revenue FROM orders"
-
-
-@pytest.fixture
-def loaded_chat(client, chat_id) -> str:
-    assert upload(client, chat_id, ("orders.csv", ORDERS), ("customers.csv", CUSTOMERS), notes=NOTES).status_code == 200
-    return chat_id
 
 
 def script_turn(fake, sql=TOTAL, answer="Total revenue is 60.75.", sub_question="What is the total revenue?"):
@@ -87,7 +76,7 @@ def test_a_follow_up_gets_the_previous_questions_sql_and_answer_but_no_chart_spe
 
 
 def test_only_the_last_turns_reach_the_model_while_the_transcript_keeps_all(loaded_chat, client, ask, fake_model):
-    assert HISTORY_TURNS == 6
+    # 8 turns are asked and the window is the last 6 (README: "the model sees only the last 6 turns")
     for i in range(1, 9):
         script_turn(fake_model, sql=f"SELECT {i} AS sql_marker_{i}", answer=f"answer-marker-{i}")
         ask(loaded_chat, f"question-marker-{i}")

@@ -1,7 +1,7 @@
 """Sample dataset, Dataset Notes / As-of Date editing and the Orchestrator's direct replies, through the HTTP API."""
 
 import pytest
-from test_ingestion import SAMPLE_ROWS
+from helpers import SAMPLE_ROWS
 
 # The Revenue definition in the sample's Dataset Notes, as SQL: full-year window ending at the As-of Date 2024-11-04.
 REVENUE_SQL = """
@@ -15,12 +15,6 @@ WHERE o.order_date > DATE '2024-11-04' - INTERVAL '1 year' AND o.order_date <= D
 
 def kinds(events):
     return [e for e, _ in events]
-
-
-@pytest.fixture
-def sample_chat(client, chat_id) -> str:
-    assert client.post(f"/chats/{chat_id}/sample").status_code == 200
-    return chat_id
 
 
 def test_one_click_sample_loads_8_tables_notes_and_as_of_date(client, chat_id):

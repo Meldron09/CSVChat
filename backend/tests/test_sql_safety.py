@@ -4,21 +4,16 @@ Ordinary database errors are retried (twice) with the error fed back; guard reje
 timeouts are terminal `error` events. Either way the Chat's data is never changed."""
 
 import dataclasses
-import uuid
 
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
-from test_messages import loaded_chat, names, script_happy_path  # noqa: F401  (loaded_chat is a fixture)
+from helpers import names, schema_of, script_happy_path
 
 from app.main import create_app
 
 ONE_SUB_QUESTION = {"sub_questions": ["What is the total revenue?"]}
 BAD_SQL = "SELECT revenue FROM orders"  # column does not exist: an ordinary, fixable error
-
-
-def schema_of(chat_id) -> str:
-    return f"chat_{uuid.UUID(chat_id).hex}"
 
 
 def assert_orders_untouched(settings, chat_id):

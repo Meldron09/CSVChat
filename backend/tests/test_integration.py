@@ -1,7 +1,6 @@
 """Seam between the sibling features: sample data + parallel fan-out + Chart Builder + Synthesizer, and direct replies skipping all of them."""
 
-from test_parallel import assert_valid_stream
-from test_sample import sample_chat  # noqa: F401  (fixture)
+from helpers import assert_valid_stream
 
 PARTS = ["Revenue per year-month?", "How many customers are there?"]
 SQL_FOR = {

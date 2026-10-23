@@ -5,29 +5,9 @@ import uuid
 
 import pytest
 from fastapi.testclient import TestClient
-from test_ingestion import upload
+from helpers import NOTES, names, schema_of, script_happy_path, upload
 
 from app.main import create_app
-
-NOTES = "Revenue means completed payments only."
-ORDERS = b"order_id,order_date,total_price\n1,2024-01-05,10.50\n2,2024-02-06,20.25\n3,2024-03-07,30.00\n"
-CUSTOMERS = b"customer_id,name\n1,Ann\n2,Bob\n"
-
-
-@pytest.fixture
-def loaded_chat(client, chat_id) -> str:
-    assert upload(client, chat_id, ("orders.csv", ORDERS), ("customers.csv", CUSTOMERS), notes=NOTES).status_code == 200
-    return chat_id
-
-
-def script_happy_path(fake, sql="SELECT sum(total_price) AS revenue FROM orders", answer="Total revenue is 60.75."):
-    fake.script("orchestrator", {"sub_questions": ["What is the total revenue?"]})
-    fake.script("sql_analyst", {"sql": sql})
-    fake.script("synthesizer", answer)
-
-
-def names(events):
-    return [e for e, _ in events]
 
 
 def test_events_stream_in_order_and_the_answer_is_the_streamed_text(loaded_chat, ask, fake_model):
@@ -92,14 +72,14 @@ def test_non_select_sql_is_rejected_before_execution_and_data_is_untouched(loade
 def test_sql_runs_as_the_chats_own_role_with_its_schema_as_search_path(loaded_chat, ask, fake_model):
     script_happy_path(fake_model, sql="SELECT current_user AS u, current_schema() AS s")
     ask(loaded_chat, "who am I")
-    expected = f"chat_{uuid.UUID(loaded_chat).hex}"
+    expected = schema_of(loaded_chat)
     assert f'"rows": [["{expected}", "{expected}"]]' in fake_model.prompt_text("synthesizer")
 
 
 def test_a_chat_cannot_read_another_chats_tables_through_the_agent(loaded_chat, client, ask, fake_model):
     other = client.post("/chats").json()["id"]
     upload(client, other, ("secrets.csv", b"id,secret\n1,hunter2\n"))
-    other_schema = f"chat_{uuid.UUID(other).hex}"
+    other_schema = schema_of(other)
 
     script_happy_path(fake_model, sql=f"SELECT * FROM {other_schema}.secrets")
     events = ask(loaded_chat, "peek")
