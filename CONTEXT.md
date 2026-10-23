@@ -25,7 +25,7 @@ The description of a Dataset handed to the agents: each Table's columns, types, 
 _Avoid_: Metadata, catalog
 
 **Cleaning Report**:
-The per-Table record of what ingestion changed or flagged (type fixes, removed duplicate rows, flagged outliers). Outliers are flagged, never removed.
+The per-Table record of what ingestion changed or flagged (type fixes, removed duplicate rows, null-marker conversions, flagged outliers). Outliers are flagged, never removed.
 _Avoid_: Audit log, validation result
 
 **Dataset Notes**:
