@@ -31,20 +31,20 @@ def sql_analyst(task: AnalystInput, runtime: Runtime[Context]) -> dict:
     result. SqlRejected (guard, permission denied, timeout) is terminal and propagates: the route emits an `error` event.
     All retry state is local to this call, so parallel analysts never share it."""
     ctx, sub_question = runtime.context, task["sub_question"]
-    emit("step", node="sql_analyst", message=f"Writing SQL: {sub_question}")
+    emit("step", node="sql_analyst", task=task["task"], message=f"Task {task['task'] + 1}: writing SQL for: {sub_question}")
     messages = [SystemMessage(SYSTEM.format(context=dataset_context(task))), HumanMessage(sub_question)]
     for attempt in range(MAX_RETRIES + 1):
         query = call_structured(ctx.model, "sql_analyst", SqlQuery, messages)
-        emit("sql", sub_question=sub_question, sql=query.sql)
+        emit("sql", task=task["task"], sub_question=sub_question, sql=query.sql)
         try:
             result = run_sql(ctx.settings, ctx.chat_id, query.sql)
         except SqlError as e:
             error = str(e)
             if attempt == MAX_RETRIES:
                 break
-            emit("step", node="sql_analyst", message=f"Query failed, retrying ({attempt + 1}/{MAX_RETRIES}): {error.splitlines()[0]}")
+            emit("step", node="sql_analyst", task=task["task"], message=f"Query failed, retrying ({attempt + 1}/{MAX_RETRIES}): {error.splitlines()[0]}")
             messages = [*messages, HumanMessage(f"Your query failed.\nQuery: {query.sql}\nDatabase error: {error}\nReturn a corrected query.")]
         else:
-            row = {"sub_question": sub_question, "sql": query.sql, "columns": result.columns, "rows": result.rows}
+            row = {"task": task["task"], "sub_question": sub_question, "sql": query.sql, "columns": result.columns, "rows": result.rows}
             return {"results": [{**row, "truncated": result.truncated, "error": None}]}
-    return {"results": [{"sub_question": sub_question, "sql": query.sql, "columns": [], "rows": [], "truncated": False, "error": error}]}
+    return {"results": [{"task": task["task"], "sub_question": sub_question, "sql": query.sql, "columns": [], "rows": [], "truncated": False, "error": error}]}

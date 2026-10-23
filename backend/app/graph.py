@@ -2,7 +2,7 @@
 
 Adding a node: write it in its own module under app/agents, register it here, extend `State` in app/state.py.
 - Chart Builder (#7): node between `sql_analyst` and `synthesizer`.
-- Fan-out (#8): orchestrator returns several sub-questions; `fan_out` already sends one SQL Analyst each.
+- Fan-out: the Orchestrator returns 1..MAX_SUB_QUESTIONS sub-questions; `fan_out` sends one SQL Analyst each, in parallel.
 """
 
 from langgraph.graph import END, START, StateGraph
@@ -16,7 +16,7 @@ from app.state import Context, State
 
 def fan_out(state: State) -> list[Send]:
     shared = {k: state[k] for k in ("question", "as_of_date", "dataset_notes", "schema_profile")}
-    return [Send("sql_analyst", {**shared, "sub_question": q}) for q in state["sub_questions"]]
+    return [Send("sql_analyst", {**shared, "task": i, "sub_question": q}) for i, q in enumerate(state["sub_questions"])]
 
 
 def build_graph():

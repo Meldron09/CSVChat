@@ -25,7 +25,7 @@ export function ChatPanel({ chatId, children }: { chatId: string; children: Reac
 
   function apply(id: number, { event, data }: ChatEvent) {
     if (event === "step") update(id, (t) => ({ steps: [...t.steps, data.message] }));
-    else if (event === "sql") update(id, (t) => ({ queries: [...t.queries, { subQuestion: data.sub_question, sql: data.sql }] }));
+    else if (event === "sql") update(id, (t) => ({ queries: [...t.queries, { task: data.task, subQuestion: data.sub_question, sql: data.sql }] }));
     else if (event === "token") update(id, (t) => ({ text: t.text + data.text }));
     else if (event === "answer") update(id, () => ({ text: data.text, status: "done" }));
     else if (event === "error") update(id, () => ({ status: "error", error: data.message }));

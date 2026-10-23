@@ -12,6 +12,8 @@ from app.state import Context, State
 
 SYSTEM = """You are the Synthesizer of a data analysis assistant. Answer the user's question in plain language from the
 query results below, quoting the key numbers. Be concise. Do not invent numbers that are not in the results.
+The results come from independent sub-questions, one entry per sub-question in the order the user asked them: cover each in
+that order and merge them into one coherent answer, not separate replies. A simple question has a single result.
 State the As-of Date you used (for example "As of 2024-11-04, ...") so the user can see how relative dates were read.
 Results marked "truncated": true hold only the first 1,000 rows of a larger result: say so, and do not present totals over those rows as complete.
 Each entry under "Failed parts" could not be answered: state plainly that it failed and why. Never guess, estimate or fill it in.
@@ -27,8 +29,9 @@ Failed parts:
 
 def synthesizer(state: State, runtime: Runtime[Context]) -> dict:
     emit("step", node="synthesizer", message="Writing the answer")
-    results = [r for r in state.get("results", []) if not r.get("error")]
-    failed = [r for r in state.get("results", []) if r.get("error")]
+    ordered = sorted(state.get("results", []), key=lambda r: r["task"])  # parallel analysts finish in any order: merge in the order asked
+    results = [r for r in ordered if not r.get("error")]
+    failed = [r for r in ordered if r.get("error")]
     if failed and not results:  # nothing to synthesize: report plainly without asking the model, so it cannot invent an answer
         text = f"As of {state['as_of_date']}, I could not answer this question.\n" + "".join(_failure_line(r) for r in failed)
         emit("token", text=text)

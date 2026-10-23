@@ -3,7 +3,7 @@ export type Turn = {
   question: string;
   asOfDate: string;
   steps: string[]; // progress messages in arrival order
-  queries: { subQuestion: string; sql: string }[];
+  queries: { task: number; subQuestion: string; sql: string }[]; // parallel tasks interleave: shown in arrival order, labelled by task
   text: string; // streamed token by token, replaced by the final Answer text
   status: "running" | "done" | "error";
   error?: string;
@@ -27,7 +27,7 @@ export function TurnView({ turn }: { turn: Turn }) {
       )}
       {turn.queries.map((q, i) => (
         <details key={i} open className="rounded border border-zinc-300 p-2" aria-label="SQL query">
-          <summary className="cursor-pointer text-xs text-zinc-500">SQL: {q.subQuestion}</summary>
+          <summary className="cursor-pointer text-xs text-zinc-500">Task {q.task + 1} SQL: {q.subQuestion}</summary>
           <pre className="mt-1 overflow-x-auto whitespace-pre-wrap text-xs">{q.sql}</pre>
         </details>
       ))}
