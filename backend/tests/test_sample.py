@@ -31,6 +31,20 @@ def test_one_click_sample_loads_8_tables_notes_and_as_of_date(client, chat_id):
     assert len(chat["cleaning_reports"]) == 8
 
 
+def test_sample_never_overwrites_the_chats_own_dataset_notes(client, chat_id):
+    mine = "Revenue is whatever I say it is."
+    assert client.put(f"/chats/{chat_id}", json={"dataset_notes": mine}).status_code == 200
+    body = client.post(f"/chats/{chat_id}/sample").json()
+    assert body["dataset_notes"] == mine and len(body["reports"]) == 8 and body["as_of_date"] == "2024-11-04"
+    assert client.get(f"/chats/{chat_id}").json()["dataset_notes"] == mine
+
+
+def test_sample_fills_blank_dataset_notes(client, chat_id):
+    client.put(f"/chats/{chat_id}", json={"dataset_notes": "   "})
+    body = client.post(f"/chats/{chat_id}/sample").json()
+    assert "Completed" in body["dataset_notes"] and client.get(f"/chats/{chat_id}").json()["dataset_notes"] == body["dataset_notes"]
+
+
 def test_sample_for_an_unknown_chat_is_404(client):
     assert client.post("/chats/00000000-0000-0000-0000-000000000000/sample").status_code == 404
 

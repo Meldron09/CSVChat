@@ -7,7 +7,7 @@ from pathlib import Path
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
-from helpers import FIXTURES, SAMPLE_DIR, SAMPLE_ROWS, upload
+from helpers import FIXTURES, SAMPLE_DIR, SAMPLE_ROWS, csv, upload
 
 from app.main import create_app
 
@@ -23,7 +23,8 @@ def test_dirty_csv_is_cleaned_and_flagged(client, query, chat_id):
     assert {n: c["type"] for n, c in cols.items()} == {
         "id": "bigint", "customer_name": "text", "city": "text", "price": "numeric", "qty": "bigint", "signup": "date",
     }
-    assert (cols["city"]["nulls"], cols["price"]["nulls"], cols["signup"]["nulls"]) == (1, 1, 1)  # kept as NULL, not filled
+    assert (cols["city"]["nulls"], cols["price"]["nulls"], cols["signup"]["nulls"]) == (0, 1, 1)  # empty cells kept as NULL, not filled
+    assert "whitespace" in report["duplicates_basis"]  # rows differing only in spacing (Alice) count as duplicates
     assert cols["city"]["values_trimmed"] == 2
     flags = {(o["column"], o["rule"]): o for o in report["outliers"]}
     assert flags[("price", "iqr")]["count"] == 2  # 9999.00 and 0.00
@@ -34,8 +35,31 @@ def test_dirty_csv_is_cleaned_and_flagged(client, query, chat_id):
     # flagged, never dropped; text normalized; nulls are NULLs
     assert query(chat_id, "SELECT count(*) FROM dirty WHERE price IN (9999, 0)") == [(2,)]
     assert query(chat_id, "SELECT city FROM dirty WHERE id IN (1, 3) ORDER BY id") == [("Paris",), ("New York",)]
-    assert query(chat_id, "SELECT count(*) FROM dirty WHERE city IS NULL AND id = 6") == [(1,)]
+    assert query(chat_id, "SELECT city FROM dirty WHERE id = 6") == [("N/A",)]  # real text in a text column is not a null marker
+    assert query(chat_id, "SELECT count(*) FROM dirty WHERE price IS NULL AND id = 7") == [(1,)]
     assert client.get(f"/chats/{chat_id}").json()["dataset_notes"] == "Revenue = sum of price"
+
+
+def test_null_tokens_are_nulls_only_outside_text_columns_and_are_counted_separately(client, query, chat_id):
+    body = csv(
+        ("id", "name", "qty", "seen_on", "status"),
+        (1, "None", 5, "2024-01-01", "None"),
+        (2, "Null", "N/A", "2024-01-02", "None"),
+        (3, "Bob", "nan", "null", "None"),
+        (4, "NA", 7, "2024-01-04", "None"),
+        (5, "", 8, "", "None"),
+    )
+    report = upload(client, chat_id, ("tokens.csv", body)).json()["reports"][0]
+    cols = {c["name"]: c for c in report["columns"]}
+    assert {n: c["type"] for n, c in cols.items()} == {"id": "bigint", "name": "text", "qty": "bigint", "seen_on": "date", "status": "text"}
+    # text columns: only the truly empty cell is NULL; "None"/"Null"/"NA" are values and are kept as written
+    assert (cols["name"]["nulls"], cols["name"]["null_tokens_converted"]) == (1, 0)
+    assert (cols["status"]["nulls"], cols["status"]["null_tokens_converted"]) == (0, 0)  # only tokens: still text
+    # typed columns: tokens become NULL and are reported apart from genuinely empty cells
+    assert (cols["qty"]["nulls"], cols["qty"]["null_tokens_converted"]) == (2, 2)
+    assert (cols["seen_on"]["nulls"], cols["seen_on"]["null_tokens_converted"]) == (2, 1)
+    assert query(chat_id, "SELECT name, status FROM tokens ORDER BY id") == [("None", "None"), ("Null", "None"), ("Bob", "None"), ("NA", "None"), (None, "None")]
+    assert query(chat_id, "SELECT qty FROM tokens ORDER BY id") == [(5,), (None,), (None,), (7,), (8,)]
 
 
 def test_latin1_semicolon_file_loads(client, query, chat_id):
@@ -51,6 +75,16 @@ def test_reupload_replaces_the_table_and_its_report(client, query, chat_id):
     assert query(chat_id, "SELECT a, b FROM t") == [(7, "q")]
     stored = client.get(f"/chats/{chat_id}").json()["cleaning_reports"]
     assert [(r["table"], r["rows_loaded"]) for r in stored] == [("t", 1)]
+
+
+def test_a_rejected_file_still_returns_the_reports_of_the_files_loaded_before_it(client, chat_id):
+    res = upload(client, chat_id, ("good.csv", b"a,b\n1,x\n2,y\n"), ("bad.csv", b""), ("never.csv", b"c\n1\n"))
+    assert res.status_code == 422 and "bad.csv" in res.json()["detail"]
+    body = res.json()
+    assert [r["table"] for r in body["reports"]] == ["good"] and body["reports"][0]["rows_loaded"] == 2
+    assert [t["name"] for t in body["schema_profile"]["tables"]] == ["good"]  # the Dataset did change, and the client is told
+    chat = client.get(f"/chats/{chat_id}").json()
+    assert [r["table"] for r in chat["cleaning_reports"]] == ["good"] and chat["schema_profile"] == body["schema_profile"]
 
 
 def test_files_can_be_added_later_in_a_chat(client, chat_id):
@@ -81,6 +115,20 @@ def test_oversized_file_is_rejected_with_413(settings, tmp_path):
         res = upload(c, chat, ("big.csv", b"a\n" + b"1\n" * 2000))
         assert res.status_code == 413 and "limit" in res.json()["detail"]
         assert not list((tmp_path / "uploads").rglob("big.csv*"))  # no partial file left behind
+
+
+def test_an_oversized_request_is_refused_from_its_content_length_before_the_body_is_read(settings, tmp_path):
+    small = dataclasses.replace(settings, max_request_bytes=10_000)
+    with TestClient(create_app(small)) as c:
+        chat = c.post("/chats").json()["id"]
+        # a 5-byte body that is not even multipart: only the declared length can explain a 413 (parsing it would fail differently)
+        res = c.post(
+            f"/chats/{chat}/files", content=b"junk\n",
+            headers={"content-type": "multipart/form-data; boundary=x", "content-length": "5000000000"},
+        )
+        assert res.status_code == 413 and "limit for one request" in res.json()["detail"]
+        assert not (tmp_path / "uploads").exists() or not list((tmp_path / "uploads").rglob("*"))  # nothing was written
+        assert upload(c, chat, ("ok.csv", b"a\n1\n")).status_code == 200  # a normal upload is unaffected
 
 
 @pytest.mark.parametrize("content", [b"", b"a,b\n", b'a,b\n1,2,3,4\n"unterminated'])

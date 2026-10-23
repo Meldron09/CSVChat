@@ -4,6 +4,11 @@ Keeps the raw upload on disk, sniffs encoding (UTF-8, Latin-1 fallback) and deli
 chunked passes (100k rows each): pass 1 infers column types, pass 2 cleans, dedups and bulk-loads with COPY.
 Outliers are flagged in SQL after the load and never dropped. Memory stays bounded by the chunk size plus
 8 bytes per distinct row (dedup hashes).
+
+Nulls: an empty cell is NULL in every column. The tokens NA/N/A/nan/null/none are NULL markers only in columns that
+infer to a non-text type (so `City = "None"` or a surname "Null" survive in text columns); each such conversion is
+counted per column in the Cleaning Report (`null_tokens_converted`). A column whose only non-empty values are such
+tokens stays text.
 """
 
 import codecs
@@ -22,7 +27,7 @@ from psycopg import sql
 from app.settings import Settings
 
 CHUNK_ROWS = 100_000
-NULL_TOKENS = {"", "na", "n/a", "nan", "null", "none"}
+NULL_TOKENS = {"na", "n/a", "nan", "null", "none"}  # NULL markers in non-text columns only (see module docstring)
 NON_POSITIVE_COLUMNS = re.compile(r"price|amount|cost|total|quantity|qty")  # values <= 0 are suspicious here
 SQL_TYPES = ("bigint", "numeric", "date", "timestamp")  # inference order; anything else is text
 TYPE_PATTERNS = {
@@ -31,6 +36,9 @@ TYPE_PATTERNS = {
     "date": re.compile(r"\d{4}-\d{2}-\d{2}"),
     "timestamp": re.compile(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?"),
 }
+
+
+DUPLICATES_BASIS = "exact duplicates after trimming and collapsing whitespace (rows differing only in spacing count as duplicates)"
 
 
 class IngestionError(Exception):
@@ -97,12 +105,16 @@ def _sniff_delimiter(path: Path, encoding: str) -> str:
     return best
 
 
-def _clean(chunk: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Trim and whitespace-normalize every cell; null tokens become NULL. Returns (cleaned, trimmed-mask)."""
-    cleaned = chunk.apply(lambda col: col.str.strip().str.replace(r"\s+", " ", regex=True))
-    cleaned = cleaned.apply(lambda col: col.mask(col.str.lower().isin(NULL_TOKENS)))
+def _clean(chunk: pd.DataFrame, token_columns: list[str] | None = None) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Trim and whitespace-normalize every cell; empty cells become NULL, and so do NULL_TOKENS in `token_columns`
+    (default: every column). Returns (cleaned, trimmed-mask, converted-token-mask)."""
+    normalized = chunk.apply(lambda col: col.str.strip().str.replace(r"\s+", " ", regex=True))
+    tokens = normalized.apply(lambda col: col.str.lower().isin(NULL_TOKENS)).astype(bool)
+    if token_columns is not None:
+        tokens[[c for c in tokens.columns if c not in token_columns]] = False
+    cleaned = normalized.mask(tokens | (normalized == ""))
     trimmed = cleaned.notna() & (cleaned != chunk)
-    return cleaned, trimmed
+    return cleaned, trimmed, tokens
 
 
 def _chunks(path: Path, delimiter: str, encoding: str):
@@ -114,11 +126,15 @@ def _chunks(path: Path, delimiter: str, encoding: str):
 
 def _infer_types(path: Path, delimiter: str, encoding: str, columns: list[str]) -> list[str]:
     possible = {c: list(SQL_TYPES) for c in columns}
+    has_value = dict.fromkeys(columns, False)  # a non-null cell, token markers aside
+    has_token = dict.fromkeys(columns, False)
     for chunk in _chunks(path, delimiter, encoding):
         chunk.columns = columns
-        cleaned, _ = _clean(chunk)
+        cleaned, _, tokens = _clean(chunk)
         for col in columns:
             values = cleaned[col].dropna()
+            has_value[col] |= not values.empty
+            has_token[col] |= bool(tokens[col].any())
             for t in list(possible[col]):
                 if values.empty:
                     break
@@ -129,7 +145,8 @@ def _infer_types(path: Path, delimiter: str, encoding: str, columns: list[str]) 
                     ok = pd.to_datetime(values, format="ISO8601", errors="coerce").notna().all()
                 if not ok:
                     possible[col].remove(t)
-    return [(possible[c] or ["text"])[0] for c in columns]
+    # only tokens ("None" in every row): that is text, not a numeric column of nulls
+    return ["text" if has_token[c] and not has_value[c] else (possible[c] or ["text"])[0] for c in columns]
 
 
 def _load(settings: Settings, schema: str, table: str, filename: str, path: Path, encoding: str) -> dict:
@@ -157,7 +174,8 @@ def _copy(settings, schema, table, filename, path, delimiter, encoding, header, 
     coldefs = sql.SQL(", ").join(sql.SQL("{} {}").format(sql.Identifier(c), sql.SQL(t)) for c, t in zip(columns, types))
     seen = np.empty(0, dtype=np.uint64)  # sorted hashes of kept rows: exact-duplicate detection across chunks
     rows_read = loaded = 0
-    nulls, trims = pd.Series(0, index=columns), pd.Series(0, index=columns)
+    nulls, trims, converted = (pd.Series(0, index=columns) for _ in range(3))
+    token_columns = [c for c, t in zip(columns, types) if t != "text"]
     with psycopg.connect(settings.owner_dsn) as conn:  # one transaction: a failed load keeps the old Table
         replaced = conn.execute("SELECT to_regclass(format('%%I.%%I', %s::text, %s::text)) IS NOT NULL", (schema, table)).fetchone()[0]
         conn.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(tbl))
@@ -166,7 +184,7 @@ def _copy(settings, schema, table, filename, path, delimiter, encoding, header, 
             for chunk in _chunks(path, delimiter, encoding):
                 chunk.columns = columns
                 rows_read += len(chunk)
-                cleaned, trimmed = _clean(chunk)
+                cleaned, trimmed, tokens = _clean(chunk, token_columns)
                 hashes = pd.util.hash_pandas_object(cleaned, index=False).to_numpy()
                 at = np.minimum(np.searchsorted(seen, hashes), max(len(seen) - 1, 0))
                 seen_before = (seen[at] == hashes) if len(seen) else np.zeros(len(hashes), dtype=bool)
@@ -176,6 +194,7 @@ def _copy(settings, schema, table, filename, path, delimiter, encoding, header, 
                 loaded += len(cleaned)
                 nulls += cleaned.isna().sum()
                 trims += trimmed[keep].sum()
+                converted += tokens[keep].sum()
                 copy.write(cleaned.to_csv(index=False, header=False, na_rep="").encode())
         if loaded == 0:
             raise IngestionError(422, f"{filename}: no data rows")
@@ -188,9 +207,10 @@ def _copy(settings, schema, table, filename, path, delimiter, encoding, header, 
         "delimiter": delimiter,
         "rows_read": rows_read,
         "duplicates_removed": rows_read - loaded,
+        "duplicates_basis": DUPLICATES_BASIS,
         "rows_loaded": loaded,
         "columns": [
-            {"name": c, "original_name": h, "type": t, "nulls": int(nulls[c]), "values_trimmed": int(trims[c])}
+            {"name": c, "original_name": h, "type": t, "nulls": int(nulls[c]), "null_tokens_converted": int(converted[c]), "values_trimmed": int(trims[c])}
             for c, h, t in zip(columns, header, types)
         ],
         "outliers": outliers,  # flagged only: no row is ever removed for being an outlier

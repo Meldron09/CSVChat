@@ -15,7 +15,8 @@ class Settings:
     ollama_model: str
     ollama_base_url: str
     upload_dir: str
-    max_upload_bytes: int
+    max_upload_bytes: int  # per file
+    max_request_bytes: int  # per upload request (all files), checked from Content-Length before the body is read
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -31,6 +32,7 @@ class Settings:
             ollama_base_url=env("OLLAMA_BASE_URL", "http://localhost:11434"),
             upload_dir=env("UPLOAD_DIR", "./data/uploads"),  # raw uploads, kept untouched
             max_upload_bytes=int(env("MAX_UPLOAD_BYTES", str(200 * 1024 * 1024))),
+            max_request_bytes=int(env("MAX_REQUEST_BYTES", str(1024 * 1024 * 1024))),
         )
 
     def dsn(self, role: str, password: str) -> str:
