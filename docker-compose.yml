@@ -1,0 +1,52 @@
+# Host ports and the project name are overridable so several checkouts can run side by side:
+#   COMPOSE_PROJECT_NAME=csvchat2 POSTGRES_PORT=55433 BACKEND_PORT=8001 FRONTEND_PORT=3001 docker compose up
+# (the project name defaults to the checkout's directory name). Ollama runs on the host.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: csvchat
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-owner}
+      DB_READONLY_PASSWORD: ${DB_READONLY_PASSWORD:-readonly}
+    ports:
+      - "${POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      # 127.0.0.1: the temporary init-time server only listens on the unix socket
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d csvchat"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  backend:
+    build: ./backend
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: csvchat
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-owner}
+      DB_READONLY_PASSWORD: ${DB_READONLY_PASSWORD:-readonly}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gpt-oss:20b-cloud}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
