@@ -18,6 +18,8 @@ State the As-of Date you used (for example "As of 2024-11-04, ...") so the user 
 Results marked "truncated": true hold only the first 1,000 rows of a larger result: say so, and do not present totals over those rows as complete.
 Each entry under "Failed parts" could not be answered: state plainly that it failed and why. Never guess, estimate or fill it in.
 
+{charts}
+
 {context}
 
 Query results:
@@ -25,6 +27,13 @@ Query results:
 
 Failed parts:
 {failures}"""
+
+
+def charts_block(state: State) -> str:
+    """Tell the Synthesizer which charts will be drawn next to its text, so it neither claims nor omits them."""
+    titles = [c["title"] for c in state.get("charts", [])]
+    out = f"Charts shown to the user beside your answer: {titles}. You may refer to them." if titles else "No charts are shown: do not mention or promise any chart."
+    return "\n".join([out, *(f"Chart problem (do not claim this chart): {n}" for n in state.get("chart_notes", []))])
 
 
 def synthesizer(state: State, runtime: Runtime[Context]) -> dict:
@@ -37,7 +46,7 @@ def synthesizer(state: State, runtime: Runtime[Context]) -> dict:
         emit("token", text=text)
     else:
         failures = "".join(_failure_line(r) for r in failed) or "(none)\n"
-        system = SYSTEM.format(context=dataset_context(state), results=json.dumps(results, default=str), failures=failures)  # default=str: Decimal, date
+        system = SYSTEM.format(charts=charts_block(state), context=dataset_context(state), results=json.dumps(results, default=str), failures=failures)  # default=str: Decimal, date
         messages = [SystemMessage(system), HumanMessage(state["question"])]
         text = ""
         for token in stream_text(runtime.context.model, "synthesizer", messages):

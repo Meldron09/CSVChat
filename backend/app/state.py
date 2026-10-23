@@ -53,5 +53,6 @@ class State(DatasetInfo):
     sub_questions: list[str]  # written by the Orchestrator
     direct_reply: str  # written by the Orchestrator instead of sub_questions: answer now, no analysts or Synthesizer
     results: Annotated[list[AnalystResult], operator.add]  # appended by each SQL Analyst
-    charts: Annotated[list[dict], operator.add]  # Chart Specs; appended by the Chart Builder (not built yet)
+    charts: Annotated[list[dict], operator.add]  # validated Chart Specs (app/chart_spec.py), from the Chart Builder
+    chart_notes: list[str]  # what the Chart Builder rejected or dropped; the Synthesizer must not claim those charts
     answer: str  # written by the Synthesizer

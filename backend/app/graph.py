@@ -1,13 +1,15 @@
 """Graph wiring: START -> orchestrator -> sql_analyst (one per sub-question, via Send) -> synthesizer -> END.
 
 Adding a node: write it in its own module under app/agents, register it here, extend `State` in app/state.py.
-- Chart Builder (#7): node between `sql_analyst` and `synthesizer`.
+- Chart Builder (#7): node between `sql_analyst` and `synthesizer`; sees all `results`, appends validated `charts`.
 - Fan-out: the Orchestrator returns 1..MAX_SUB_QUESTIONS sub-questions; `fan_out` sends one SQL Analyst each, in parallel.
+- Direct replies (#10): `route` sends them to `direct_reply` -> END, skipping analysts, Chart Builder and Synthesizer.
 """
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
+from app.agents.chart_builder import chart_builder
 from app.agents.direct_reply import direct_reply
 from app.agents.orchestrator import orchestrator
 from app.agents.sql_analyst import sql_analyst
@@ -30,10 +32,12 @@ def build_graph():
     g.add_node("orchestrator", orchestrator)
     g.add_node("direct_reply", direct_reply)
     g.add_node("sql_analyst", sql_analyst)
+    g.add_node("chart_builder", chart_builder)
     g.add_node("synthesizer", synthesizer)
     g.add_edge(START, "orchestrator")
     g.add_conditional_edges("orchestrator", route, ["sql_analyst", "direct_reply"])
-    g.add_edge("sql_analyst", "synthesizer")
+    g.add_edge("sql_analyst", "chart_builder")  # runs once, after all parallel SQL Analysts of the question
+    g.add_edge("chart_builder", "synthesizer")
     g.add_edge("synthesizer", END)
     g.add_edge("direct_reply", END)
     return g.compile()
