@@ -15,6 +15,11 @@ async function saved(page: Page) {
 
 const dateField = (page: Page) => page.getByLabel("As-of Date");
 const notes = (page: Page) => page.getByLabel("Dataset Notes");
+/** The message box stays disabled until a Table exists: upload a tiny CSV (the sample would also set the As-of Date). */
+async function addData(page: Page) {
+  await page.getByLabel("CSV files").setInputFiles({ name: "t.csv", mimeType: "text/csv", buffer: Buffer.from("id\n1\n") });
+  await expect(page.getByRole("button", { name: /^t\b/ })).toBeVisible();
+}
 
 test("As-of Date defaults to the browser's local today and shows in the composer", async ({ page }) => {
   const today = await page.evaluate(() => {
@@ -31,6 +36,7 @@ test("editing the As-of Date updates the composer label, is saved, and is sent w
   await expect(page.locator("form").getByText("as of 2024-03-15", { exact: true })).toBeVisible();
   await expect.poll(async () => (await saved(page)).as_of_date).toBe("2024-03-15");
 
+  await addData(page);
   await page.getByRole("textbox", { name: "Question" }).fill("How many orders?");
   await page.getByRole("button", { name: "Ask" }).click();
   await expect(page.getByText("(As-of Date used: 2024-03-15)")).toBeVisible(); // the fake echoes the date it was sent
@@ -48,6 +54,7 @@ test("a blank As-of Date is allowed", async ({ page }) => {
   await expect(page.getByText("no as-of date", { exact: true })).toBeVisible();
   await expect.poll(async () => (await saved(page)).as_of_date).toBeNull();
 
+  await addData(page);
   await page.getByRole("textbox", { name: "Question" }).fill("hello");
   await page.getByRole("button", { name: "Ask" }).click(); // still allowed to ask
   await expect(page.getByRole("button", { name: "Ask" })).toBeVisible();

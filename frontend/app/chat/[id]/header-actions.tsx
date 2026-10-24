@@ -2,11 +2,12 @@
 
 import { useRef, useState } from "react";
 import { Button, buttonClass } from "@/components/ui";
-import { useChatHasContent } from "./chat-content";
+import { useDataset } from "./dataset-context";
 
 /** "Copy chat link" and "New chat". Opening `/` creates a Chat, so New chat is a plain <a>, never a prefetching next/link. */
 export function HeaderActions() {
-  const hasContent = useChatHasContent();
+  const { reports, turnCount } = useDataset();
+  const hasContent = reports.length > 0 || turnCount > 0; // a Chat with Tables or Turns is worth guarding
   const dialog = useRef<HTMLDialogElement>(null);
   const [copied, setCopied] = useState<"" | "ok" | "failed">("");
 

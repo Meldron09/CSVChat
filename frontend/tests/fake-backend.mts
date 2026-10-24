@@ -96,11 +96,12 @@ function parseMultipart(req: IncomingMessage, body: Buffer) {
 }
 
 // ---------- handlers ----------
-function upload(chat: Chat, req: IncomingMessage, body: Buffer, res: ServerResponse) {
+async function upload(chat: Chat, req: IncomingMessage, body: Buffer, res: ServerResponse) {
   const { files, fields } = parseMultipart(req, body);
   if (!files.length) return detail(res, 422, "No files: send one or more .csv files in the multipart field 'files'");
   const notCsv = files.filter((f) => !/\.csv$/i.test(f.filename)).map((f) => f.filename);
   if (notCsv.length) return detail(res, 415, `Not a CSV file: ${notCsv.join(", ")} (expected .csv)`);
+  if (files.some((f) => /slow/i.test(f.filename))) await sleep(1500); // scenario: a file named "*slow*" takes a while (to observe the spinner)
   const reports: CleaningReport[] = [];
   for (const f of files) {
     // Scenario: a file whose name starts with "bad" is rejected; the files before it stay loaded.

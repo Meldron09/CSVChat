@@ -25,6 +25,7 @@ test("streams an Answer with a Chart", async ({ page }) => {
 });
 
 test("shows a failed Turn's error", async ({ page }) => {
+  await page.getByRole("button", { name: "Load sample dataset" }).click();
   await page.getByLabel("Question").fill("This will fail");
   await page.getByRole("button", { name: "Ask" }).click();
   await expect(page.getByText("This question failed: SQL guard rejected the query")).toBeVisible();
@@ -33,7 +34,6 @@ test("shows a failed Turn's error", async ({ page }) => {
 test("shows partial Cleaning Reports when an upload is rejected", async ({ page }) => {
   const csv = (name: string, body: string) => ({ name, mimeType: "text/csv", buffer: Buffer.from(body) });
   await page.getByLabel("CSV files").setInputFiles([csv("good.csv", "id,name\n1,a\n2,b\n"), csv("bad.csv", "x")]);
-  await page.getByRole("button", { name: "Upload CSVs" }).click();
   await expect(page.getByText("bad.csv: could not parse as CSV")).toBeVisible();
   await expect(page.getByText("1 earlier file(s) were loaded")).toBeVisible();
   await expect(page.getByRole("button", { name: /^good\b/ })).toBeVisible();

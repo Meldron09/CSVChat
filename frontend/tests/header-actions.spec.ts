@@ -79,7 +79,10 @@ test.describe("a Chat with Tables", () => {
   });
 });
 
-test("New chat on a Chat with only a Turn asks for confirmation", async ({ page }) => {
+test("New chat on a Chat with a Turn asks for confirmation", async ({ page }) => {
+  // the composer is disabled until a Table is loaded, so a Chat with Turns always has Tables too
+  await page.getByRole("button", { name: "Load sample dataset" }).click();
+  await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible();
   const q = page.getByRole("textbox", { name: "Question", exact: true });
   await q.fill("How is revenue?");
   await q.press("Enter");

@@ -3,6 +3,9 @@ import { test, expect, type Page } from "@playwright/test";
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/chat\/[0-9a-f-]{36}$/);
+  // the composer is disabled until a Table is loaded
+  await page.getByRole("button", { name: "Load sample dataset" }).click();
+  await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible();
 });
 
 const transcript = (page: Page) => page.getByRole("region", { name: "Transcript" });

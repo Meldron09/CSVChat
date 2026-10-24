@@ -29,13 +29,11 @@ test("lists Tables with row counts and a flagged badge only where there is somet
 
 test("counts removed duplicate rows as flagged", async ({ page }) => {
   await page.getByLabel("CSV files").setInputFiles(csv("dupes.csv", "id,name\n1,a\n1,a\n2,b\n"));
-  await page.getByRole("button", { name: "Upload CSVs" }).click();
   await expect(tables(page).getByRole("button", { name: /^dupes\b/ })).toContainText("1 flagged");
 });
 
 test("shows a compact Relationships list, or an empty message", async ({ page }) => {
   await page.getByLabel("CSV files").setInputFiles(csv("good.csv", "id,name\n1,a\n2,b\n"));
-  await page.getByRole("button", { name: "Upload CSVs" }).click();
   await expect(page.getByRole("region", { name: "Relationships" })).toContainText("No relationships found between the 1 table(s).");
   await loadSample(page);
   await expect(page.getByRole("region", { name: "Relationships" })).toContainText("orders.customer_id → customers.id");
