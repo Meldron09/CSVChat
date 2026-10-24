@@ -4,6 +4,10 @@ import { test, expect, type Page } from "@playwright/test";
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/chat\/[0-9a-f-]{36}$/);
+  // the message box is disabled until a Table exists: give the fake Chat the sample dataset, then reload
+  const id = new URL(page.url()).pathname.split("/").pop();
+  await fetch(`http://127.0.0.1:${process.env.FAKE_BACKEND_PORT ?? 4010}/chats/${id}/sample`, { method: "POST" });
+  await page.reload();
 });
 
 const question = (page: Page) => page.getByRole("textbox", { name: "Question", exact: true });

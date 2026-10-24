@@ -67,8 +67,11 @@ test("a stored choice beats the OS, and System clears it", async ({ page }) => {
 
 test("every interactive control shows a focus ring", async ({ page }) => {
   await open(page, "light");
+  await page.getByRole("button", { name: "Load sample dataset" }).click();
+  await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible(); // the message box is disabled until a Table exists
+  await page.reload();
   const seen: string[] = [];
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 40; i++) {
     await page.keyboard.press("Tab");
     const ring = await page.evaluate(() => {
       const el = document.activeElement as HTMLElement;
@@ -81,8 +84,8 @@ test("every interactive control shows a focus ring", async ({ page }) => {
     expect(ring.width, `focus ring on "${ring.name}"`).not.toBe("0px");
     seen.push(ring.name);
   }
-  // theme toggle (text is lowercase, capitalised by CSS), As-of Date, upload form, message box (the disabled Ask button is skipped)
-  expect(seen).toEqual(expect.arrayContaining(["light", "dark", "system", "CSV files", "Dataset Notes", "Upload CSVs", "Load sample dataset", "Question"]));
+  // theme toggle (text is lowercase, capitalised by CSS), As-of Date, drop zone, sample option, message box (the disabled Ask button is skipped)
+  expect(seen).toEqual(expect.arrayContaining(["light", "dark", "system", "CSV files", "Dataset Notes", "Load sample dataset", "Question"]));
 });
 
 test("reduced motion disables transitions", async ({ page }) => {

@@ -70,6 +70,7 @@ re-uploading a filename sets `replaced`).
 |---|---|
 | filename starts with `bad` | 422 "could not parse as CSV"; files before it stay loaded and come back as partial `reports` |
 | a non-`.csv` filename | 415 for the whole request, no `reports` |
+| filename contains `slow` | the response is held for 1.5 s (to observe the upload spinner and file names) |
 
 Other: `POST /chats/{id}/sample` loads 8 tables, the sample notes and As-of Date `2024-11-04`. Saving Dataset Notes containing
 `FAIL_SAVE` returns 500 (notes save failure). Add new scenarios in `fake-backend.mts` and list them here.
