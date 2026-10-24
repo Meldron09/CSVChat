@@ -5,7 +5,7 @@ import { csv, loadSample, openChat, question, shoot } from "./helpers";
 // Visual review harness, not a regression test: SHOTS=1 SHOTS_DIR=/some/dir npx playwright test screenshots
 // Later redesign stages add states here and bump STAGE.
 test.skip(!process.env.SHOTS, "set SHOTS=1 and SHOTS_DIR to write screenshots");
-const STAGE = process.env.SHOTS_STAGE ?? "stage-4";
+const STAGE = process.env.SHOTS_STAGE ?? "stage-5";
 
 test("empty chat", async ({ page }) => {
   await openChat(page);
@@ -134,5 +134,41 @@ test.describe("main pane", () => {
     await page.getByRole("region", { name: "Start with a question" }).getByRole("button").first().click();
     await expect(question(page)).toBeEnabled();
     await shoot(page, STAGE, "main-first-turn");
+  });
+});
+
+test.describe("composer", () => {
+  test("disabled, no tables", async ({ page }) => {
+    await openChat(page);
+    await shoot(page, STAGE, "composer-disabled");
+  });
+
+  test("enabled", async ({ page }) => {
+    await openChat(page);
+    await loadSample(page);
+    await shoot(page, STAGE, "composer-enabled");
+  });
+
+  test("focused", async ({ page }) => {
+    await openChat(page);
+    await loadSample(page);
+    await shoot(page, STAGE, "composer-focused", () => question(page).focus());
+  });
+
+  test("with text", async ({ page }) => {
+    await openChat(page);
+    await loadSample(page);
+    await question(page).fill("Which suppliers have the lowest review scores, and how has that changed over the past year?");
+    await shoot(page, STAGE, "composer-text");
+  });
+
+  test("busy", async ({ page }) => {
+    await openChat(page);
+    await loadSample(page);
+    await page.route("**/api/chats/*/messages", () => {}); // never answers: the Turn stays running
+    await question(page).fill("Revenue by month");
+    await question(page).press("Enter");
+    await expect(page.getByRole("button", { name: "Working…" })).toBeDisabled();
+    await shoot(page, STAGE, "composer-busy");
   });
 });

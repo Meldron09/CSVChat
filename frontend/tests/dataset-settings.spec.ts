@@ -9,6 +9,9 @@ async function saved(page: Page) {
   return (await (await fetch(`${FAKE_URL}/chats/${id}`)).json()) as { as_of_date: string | null; dataset_notes: string | null };
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** The composer's As-of Date chip (d Mon yyyy). */
+const chip = (page: Page, text: string) => page.locator("form").getByRole("button", { name: text, exact: true });
 const dateField = (page: Page) => page.getByLabel("As-of Date");
 const notes = (page: Page) => page.getByLabel("Business definitions");
 /** The message box stays disabled until a Table exists: upload a tiny CSV (the sample would also set the As-of Date). */
@@ -23,13 +26,14 @@ test("As-of Date defaults to the browser's local today and shows in the composer
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
   await expect(dateField(page)).toHaveValue(today);
-  await expect(page.locator("form").getByText(`as of ${today}`, { exact: true })).toBeVisible();
+  const [y, m, d] = today.split("-");
+  await expect(chip(page, `As of ${Number(d)} ${MONTHS[Number(m) - 1]} ${y}`)).toBeVisible();
   await expect(page.getByText("counted back from this date")).toBeVisible(); // helper text: "past year" etc. resolve against it
 });
 
 test("editing the As-of Date updates the composer label, is saved, and is sent with the next question", async ({ page }) => {
   await dateField(page).fill("2024-03-15");
-  await expect(page.locator("form").getByText("as of 2024-03-15", { exact: true })).toBeVisible();
+  await expect(chip(page, "As of 15 Mar 2024")).toBeVisible();
   await expect.poll(async () => (await saved(page)).as_of_date).toBe("2024-03-15");
 
   await addData(page);
@@ -39,7 +43,18 @@ test("editing the As-of Date updates the composer label, is saved, and is sent w
 
   await page.reload(); // restored when the Chat is resumed
   await expect(dateField(page)).toHaveValue("2024-03-15");
-  await expect(page.locator("form").getByText("as of 2024-03-15", { exact: true })).toBeVisible();
+  await expect(chip(page, "As of 15 Mar 2024")).toBeVisible();
+});
+
+test("the composer chip edits the same As-of Date as the sidebar field", async ({ page }) => {
+  await expect(page.getByLabel("As-of Date")).toHaveCount(1); // the chip's hidden input is named "Pick a date", not "As-of Date"
+  await page.getByLabel("Pick a date").fill("2025-01-09");
+  await expect(dateField(page)).toHaveValue("2025-01-09");
+  await expect(chip(page, "As of 9 Jan 2025")).toBeVisible();
+  await expect.poll(async () => (await saved(page)).as_of_date).toBe("2025-01-09");
+  await dateField(page).fill("2025-12-31");
+  await expect(page.getByLabel("Pick a date")).toHaveValue("2025-12-31");
+  await expect(chip(page, "As of 31 Dec 2025")).toBeVisible();
 });
 
 test("a blank As-of Date is allowed", async ({ page }) => {
@@ -47,7 +62,7 @@ test("a blank As-of Date is allowed", async ({ page }) => {
   await expect.poll(async () => (await saved(page)).as_of_date).toBe("2024-03-15");
   await dateField(page).clear();
   await expect(dateField(page)).toHaveValue("");
-  await expect(page.getByText("no as-of date", { exact: true })).toBeVisible();
+  await expect(chip(page, "No as-of date")).toBeVisible();
   await expect.poll(async () => (await saved(page)).as_of_date).toBeNull();
 
   await addData(page);
