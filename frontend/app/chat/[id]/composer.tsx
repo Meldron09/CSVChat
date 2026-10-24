@@ -81,7 +81,7 @@ export function Composer({ busy, onSend, box }: { busy: boolean; onSend: (questi
             }}
             placeholder="Ask a question about your data"
             aria-label="Question"
-            className="max-h-48 w-full resize-none rounded-control bg-transparent px-1 py-2 text-base text-foreground placeholder:text-muted disabled:cursor-not-allowed disabled:text-muted"
+            className="max-h-48 min-h-11 w-full resize-none rounded-control bg-transparent px-1 py-2 text-base text-foreground placeholder:text-muted disabled:cursor-not-allowed disabled:text-muted"
             disabled={off}
             aria-describedby={hasTables ? undefined : "composer-hint"}
           />

@@ -102,6 +102,7 @@ test.describe("composer", () => {
   test("grows with longer input, up to a limit", async ({ page }) => {
     const height = () => question(page).evaluate((el) => el.getBoundingClientRect().height);
     const one = await height();
+    expect(one).toBeGreaterThanOrEqual(44); // touch target
     await question(page).fill("a\nb\nc");
     const three = await height();
     expect(three).toBeGreaterThan(one + 20);

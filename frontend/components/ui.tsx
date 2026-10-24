@@ -13,15 +13,15 @@ const variants: Record<Variant, string> = {
   brand: "border-brand bg-brand text-brand-foreground text-sm font-semibold enabled:hover:bg-brand/85",
   secondary: "border-brand bg-transparent text-brand text-sm font-semibold enabled:hover:bg-brand/10",
   // A flat muted fill for a button that cannot be used right now (the Ask button while busy or with no Tables): readable, not faded.
-  neutral: "border-border-strong bg-surface text-muted text-base font-semibold disabled:cursor-not-allowed",
+  neutral: "border-border-strong bg-surface text-muted text-base font-semibold",
   ghost: "border-transparent bg-transparent text-brand text-sm font-semibold enabled:hover:bg-brand/10",
 };
 
 /** Button styling, also for links that look like buttons. Pill, at least 44px tall. */
 export const buttonClass = (variant: Variant, className?: string) =>
   cx(
-    "inline-flex min-h-11 items-center justify-center rounded-full border px-5 py-2 transition-colors",
-    variant !== "primary" && variant !== "neutral" && "disabled:opacity-60", // primary: the Ask button keeps its red (blank box); neutral is already muted
+    "inline-flex min-h-11 items-center justify-center rounded-full border px-5 py-2 transition-colors disabled:cursor-not-allowed",
+    variant !== "primary" && variant !== "neutral" && "disabled:opacity-60", // primary: the Ask button stays red while the box is blank, per the mockup; its disabled state (no Tables, busy) is the neutral variant
     variants[variant],
     className,
   );
