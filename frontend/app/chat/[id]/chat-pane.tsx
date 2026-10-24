@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ChatEvent } from "@/lib/api";
 import { readSse } from "@/lib/sse";
 import { useAsOfDate } from "./as-of-date";
+import { useReportCount } from "./chat-content";
 import { Composer } from "./composer";
 import { Transcript } from "./transcript";
 import type { Turn } from "./turn";
@@ -12,6 +13,7 @@ import type { Turn } from "./turn";
 export function ChatPane({ chatId, initialTurns }: { chatId: string; initialTurns: Turn[] }) {
   const { asOfDate } = useAsOfDate();
   const [turns, setTurns] = useState<Turn[]>(initialTurns); // the saved transcript; new turns append
+  useReportCount("turns", turns.length);
   const busy = turns.some((t) => t.status === "running");
 
   const update = (id: number, change: (t: Turn) => Partial<Turn>) =>

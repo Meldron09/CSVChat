@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getChat } from "@/lib/api";
 import { AsOfDateProvider } from "./as-of-date";
+import { ChatContentProvider } from "./chat-content";
 import { ChatPane } from "./chat-pane";
 import { DatasetSidebar } from "./dataset-sidebar";
 import { Header } from "./header";
@@ -16,15 +17,17 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
   if (!chat) notFound();
   return (
     <AsOfDateProvider chatId={chat.id} savedAsOf={chat.as_of_date}>
-      <div className="flex h-dvh flex-col">
-        <Header chatId={chat.id} />
-        <main className="flex min-h-0 flex-1">
-          <DatasetSidebar>
-            <UploadPanel chatId={chat.id} initialReports={chat.cleaning_reports ?? []} initialProfile={chat.schema_profile} initialNotes={chat.dataset_notes ?? ""} />
-          </DatasetSidebar>
-          <ChatPane chatId={chat.id} initialTurns={chat.transcript.map(fromTranscript)} />
-        </main>
-      </div>
+      <ChatContentProvider initial={{ tables: chat.cleaning_reports?.length ?? 0, turns: chat.transcript.length }}>
+        <div className="flex h-dvh flex-col">
+          <Header chatId={chat.id} />
+          <main className="flex min-h-0 flex-1">
+            <DatasetSidebar>
+              <UploadPanel chatId={chat.id} initialReports={chat.cleaning_reports ?? []} initialProfile={chat.schema_profile} initialNotes={chat.dataset_notes ?? ""} />
+            </DatasetSidebar>
+            <ChatPane chatId={chat.id} initialTurns={chat.transcript.map(fromTranscript)} />
+          </main>
+        </div>
+      </ChatContentProvider>
     </AsOfDateProvider>
   );
 }

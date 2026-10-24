@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { CleaningReport, SchemaProfile } from "@/lib/api";
 import { Button, Card } from "@/components/ui";
 import { useAsOfDate } from "./as-of-date";
+import { useReportCount } from "./chat-content";
 import { NotesEditor } from "./notes-editor";
 
 export function UploadPanel({
@@ -18,6 +19,7 @@ export function UploadPanel({
   initialNotes: string;
 }) {
   const [reports, setReports] = useState(initialReports);
+  useReportCount("tables", reports.length);
   const [profile, setProfile] = useState(initialProfile);
   const [notes, setNotes] = useState(initialNotes);
   const { setAsOfDate } = useAsOfDate();
