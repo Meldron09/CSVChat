@@ -52,6 +52,9 @@ Markdown-ish Answer ending "(As-of Date used: ...)", no Chart.
 | `chart` | Answer includes a line Chart titled "Monthly revenue" |
 | `multi` | Answer includes a two-series bar Chart "Revenue by region" with large values (12400 ... 1234567) |
 | `malformed` | Answer includes an invalid Chart Spec (renders the malformed-chart notice) |
+| `markdown` | Answer with bold, a list, a GFM table and a raw `<b>` tag (which must show as text, not render) |
+| `plain` | Plain-text Answer with single newlines and no Markdown syntax |
+| `tasks` | Adds a second parallel task (step + SQL), so "How this was answered" has two task groups |
 | `fail` | Failed Turn: `error` event "SQL guard rejected the query: only SELECT statements are allowed" |
 | `drop` | Stream closes with no terminal event (connection-closed error); Turn is not recorded |
 | `slow` | 700 ms between events (to observe the running state); default is 30 ms |
@@ -82,3 +85,7 @@ computed `fill`/`stroke` of SVG elements. Compact numbers use `Intl.NumberFormat
 ## Shell tests (`shell.spec.ts`)
 
 Layout at wide (default 1280px) and phone (`test.use({ viewport })`, 390px) widths, the sidebar drawer (a native `<dialog>`: focus trap/restore, Escape), composer keys and auto-grow, the pinned composer, and Transcript auto-scroll. The Transcript is `getByRole("region", { name: "Transcript" })`; scroll it with `el.scrollTop = ...` in `evaluate`. Use the `slow` keyword to hold a Turn in the running state. Note `getByLabel("Question")` also matches Turn articles (`aria-label="Question: ..."`) once a Turn exists: use `getByRole("textbox", { name: "Question", exact: true })`.
+
+## Turn tests (`turn.spec.ts`)
+
+Running (one status line; streamed text is `aria-hidden` inside the Transcript's `aria-live="polite"` region), done (Markdown, Charts, closed "How this was answered" disclosure grouped by task), failed + Retry (new Turn, failed one stays), the As-of Date chip rule, Markdown/plain-text rendering and resume after reload. Keywords: `markdown`, `plain`, `tasks`, `slow`, `fail`.

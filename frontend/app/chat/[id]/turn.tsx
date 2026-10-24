@@ -1,14 +1,17 @@
-import { Card } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import type { TranscriptTurn } from "@/lib/api";
 import type { ChartSpec } from "@/lib/chart-spec";
 import { ChartView } from "./chart";
+import { AnswerMarkdown } from "./markdown";
+
+export type Step = { message: string; task?: number }; // task: 0-based parallel SQL Analyst index, absent for shared steps
 
 export type Turn = {
   id: number;
   question: string;
   asOfDate: string;
-  steps: string[]; // progress messages in arrival order
-  queries: { task: number; subQuestion: string; sql: string }[]; // parallel tasks interleave: shown in arrival order, labelled by task
+  steps: Step[]; // progress messages in arrival order
+  queries: { task: number; subQuestion: string; sql: string }[];
   charts?: ChartSpec[]; // Chart Specs, only from the final answer event
   text: string; // streamed token by token, replaced by the final Answer text
   status: "running" | "done" | "error";
@@ -22,34 +25,64 @@ export function fromTranscript(t: TranscriptTurn, id: number): Turn {
   return t.error ? { ...turn, status: "error", error: t.error } : turn;
 }
 
-export function TurnView({ turn }: { turn: Turn }) {
+/** Steps and SQL grouped by task: shared steps first, then each task in order. */
+function HowAnswered({ turn }: { turn: Turn }) {
+  const tasks = [...new Set([...turn.steps, ...turn.queries].map((x) => x.task).filter((n): n is number => n !== undefined))].sort((a, b) => a - b);
+  const shared = turn.steps.filter((s) => s.task === undefined);
+  const steps = (list: Step[]) =>
+    list.length > 0 && (
+      <ol className="list-decimal pl-5 text-muted">
+        {list.map((s, i) => <li key={i}>{s.message}</li>)}
+      </ol>
+    );
+  return (
+    <Card as="details" className="p-2">
+      <summary className="cursor-pointer text-xs text-muted">How this was answered</summary>
+      <div className="mt-2 flex flex-col gap-3 text-xs">
+        {steps(shared)}
+        {tasks.map((task) => {
+          const queries = turn.queries.filter((q) => q.task === task);
+          return (
+            <section key={task} aria-label={`Task ${task + 1}`} className="flex flex-col gap-1">
+              <h3 className="font-semibold">Task {task + 1}{queries[0] && `: ${queries[0].subQuestion}`}</h3>
+              {steps(turn.steps.filter((s) => s.task === task))}
+              {queries.map((q, i) => <pre key={i} className="overflow-x-auto whitespace-pre-wrap rounded-control bg-background p-2">{q.sql}</pre>)}
+            </section>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+export function TurnView({ turn, showAsOf, onRetry, retryDisabled }: { turn: Turn; showAsOf: boolean; onRetry: () => void; retryDisabled: boolean }) {
+  const running = turn.status === "running";
+  const answer = turn.text && <Card as="div" className="px-3 py-2"><AnswerMarkdown>{turn.text}</AnswerMarkdown></Card>;
   return (
     <article className="flex flex-col gap-3 text-sm" aria-label={`Question: ${turn.question}`}>
       <p className="self-end rounded-card bg-accent px-3 py-2 text-accent-foreground">
-        {turn.question} <span className="text-xs opacity-60">(as of {turn.asOfDate})</span>
+        {turn.question}
+        {showAsOf && <span className="ml-2 rounded-full border border-current px-2 text-xs opacity-80">as of {turn.asOfDate}</span>}
       </p>
-      {turn.steps.length > 0 && (
-        <ol className="list-decimal pl-5 text-muted" aria-label="Progress">
-          {turn.steps.map((s, i) => (
-            <li key={i}>
-              {s}
-              {turn.status === "running" && i === turn.steps.length - 1 && "…"}
-            </li>
-          ))}
-        </ol>
+      {running ? (
+        <>
+          {/* One status line; the Transcript's polite live region announces it as it changes. */}
+          <p className="text-muted">{turn.steps.at(-1)?.message ?? "Starting"}…</p>
+          {/* Streamed text is hidden from assistive tech: the finished Answer (a new node) is announced instead of every token. */}
+          {turn.text && <div key="streaming" aria-hidden="true">{answer}</div>}
+        </>
+      ) : (
+        <div key="answer" className="flex flex-col gap-3">
+          {answer}
+          {turn.charts?.map((spec, i) => <ChartView key={i} spec={spec} />)}
+        </div>
       )}
-      {turn.queries.map((q, i) => (
-        <Card as="details" key={i} open className="p-2" aria-label="SQL query">
-          <summary className="cursor-pointer text-xs text-muted">Task {q.task + 1} SQL: {q.subQuestion}</summary>
-          <pre className="mt-1 overflow-x-auto whitespace-pre-wrap text-xs">{q.sql}</pre>
-        </Card>
-      ))}
-      {turn.text && <Card as="p" className="whitespace-pre-wrap px-3 py-2">{turn.text}</Card>}
-      {turn.charts?.map((spec, i) => <ChartView key={i} spec={spec} />)}
+      {!running && (turn.steps.length > 0 || turn.queries.length > 0) && <HowAnswered turn={turn} />}
       {turn.status === "error" && (
-        <p role="alert" className="text-danger">
-          This question failed: {turn.error}
-        </p>
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-danger">
+          <p>This question failed: {turn.error}</p>
+          <Button variant="secondary" onClick={onRetry} disabled={retryDisabled}>Retry</Button>
+        </div>
       )}
     </article>
   );

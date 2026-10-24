@@ -6,7 +6,7 @@ import { TurnView, type Turn } from "./turn";
 const NEAR_BOTTOM = 48; // px from the bottom that still counts as "at the bottom"
 
 /** The scrolling list of Turns. Follows new content (new Turns, streamed text, charts) unless the user has scrolled up. */
-export function Transcript({ turns }: { turns: Turn[] }) {
+export function Transcript({ turns, onRetry, busy }: { turns: Turn[]; onRetry: (question: string) => void; busy: boolean }) {
   const scroller = useRef<HTMLElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const following = useRef(true);
@@ -32,6 +32,7 @@ export function Transcript({ turns }: { turns: Turn[] }) {
     <section
       ref={scroller}
       aria-label="Transcript"
+      aria-live="polite" // announces the status line and the finished Answer; streamed text is aria-hidden (see turn.tsx)
       tabIndex={0} // keyboard users can scroll it
       className="min-h-0 flex-1 overflow-y-auto"
       onScroll={(e) => {
@@ -43,8 +44,9 @@ export function Transcript({ turns }: { turns: Turn[] }) {
       }}
     >
       <div ref={content} className="mx-auto flex max-w-3xl flex-col gap-6 p-4">
-        {turns.map((t) => (
-          <TurnView key={t.id} turn={t} />
+        {turns.map((t, i) => (
+          // The As-of Date chip shows only when the date differs from the previous Turn's (the first Turn always shows it).
+          <TurnView key={t.id} turn={t} showAsOf={t.asOfDate !== turns[i - 1]?.asOfDate} onRetry={() => onRetry(t.question)} retryDisabled={busy} />
         ))}
       </div>
     </section>

@@ -156,6 +156,12 @@ async function messages(chat: Chat, req: IncomingMessage, res: ServerResponse) {
       const sql = { task: 0, sub_question: question, sql: "SELECT date_trunc('month', order_date) AS month, SUM(total) AS revenue FROM orders GROUP BY 1" };
       turn.queries.push({ task: 0, sub_question: sql.sub_question, sql: sql.sql, error: null });
       await send({ event: "sql", data: sql });
+      if (q.includes("tasks")) { // a second parallel task, so the disclosure has something to group
+        await send({ event: "step", data: { node: "sql_analyst", message: `Task 2: writing SQL for: orders per region`, task: 1 } });
+        const second = { task: 1, sub_question: "orders per region", sql: "SELECT region, COUNT(*) AS orders FROM orders GROUP BY 1" };
+        turn.queries.push({ task: 1, sub_question: second.sub_question, sql: second.sql, error: null });
+        await send({ event: "sql", data: second });
+      }
     }
     if (q.includes("fail")) {
       turn.error = "SQL guard rejected the query: only SELECT statements are allowed";
@@ -166,7 +172,12 @@ async function messages(chat: Chat, req: IncomingMessage, res: ServerResponse) {
     const wantsChart = q.includes("chart") || q.includes("malformed") || q.includes("multi");
     if (wantsChart) await send({ event: "step", data: { node: "chart_builder", message: "Deciding whether charts are warranted" } });
     await send({ event: "step", data: { node: "synthesizer", message: "Writing the answer" } });
-    const text = `Revenue grew **12%** over the period. (As-of Date used: ${as_of_date || SAMPLE_AS_OF})`;
+    const used = `(As-of Date used: ${as_of_date || SAMPLE_AS_OF})`;
+    const text = q.includes("markdown")
+      ? `Revenue grew **12%** over the period.\n\n- North led\n- South trailed\n\n| Region | Revenue |\n| --- | --- |\n| North | 120 |\n| South | 80 |\n\n<b>raw html</b> ${used}`
+      : q.includes("plain")
+        ? `Revenue was flat.\nNo growth at all.\n${used}`
+        : `Revenue grew **12%** over the period. ${used}`;
     for (const word of text.match(/\S+\s*/g) ?? []) await send({ event: "token", data: { text: word } });
     const bad = { type: "line", title: "Broken chart" } as unknown as ChartSpec; // "malformed": violates the Chart Spec
     const charts = q.includes("malformed") ? [bad] : q.includes("multi") ? [BAR_CHART] : wantsChart ? [LINE_CHART] : [];
