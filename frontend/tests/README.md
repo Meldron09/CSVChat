@@ -33,6 +33,7 @@ Markdown-ish Answer ending "(As-of Date used: ...)", no Chart.
 | Keyword | Effect |
 |---|---|
 | `chart` | Answer includes a line Chart titled "Monthly revenue" |
+| `multi` | Answer includes a two-series bar Chart "Revenue by region" with large values (12400 ... 1234567) |
 | `malformed` | Answer includes an invalid Chart Spec (renders the malformed-chart notice) |
 | `fail` | Failed Turn: `error` event "SQL guard rejected the query: only SELECT statements are allowed" |
 | `drop` | Stream closes with no terminal event (connection-closed error); Turn is not recorded |
@@ -55,3 +56,8 @@ Other: `POST /chats/{id}/sample` loads 8 tables, the sample notes and As-of Date
 
 Colours are CSS `light-dark()` tokens, so tests switch the OS with `page.emulateMedia({ colorScheme })` and assert the computed
 `body` background. The no-flash test blocks `/_next/static/**/*.js` so only the inline `<head>` script can have applied the theme.
+
+## Chart tests (`chart.spec.ts`)
+
+Chart colours are CSS variables (`--chart-*`, axis and grid tokens), so tests switch the OS with `emulateMedia` and compare the
+computed `fill`/`stroke` of SVG elements. Compact numbers use `Intl.NumberFormat` in the browser locale (Playwright: en-US).

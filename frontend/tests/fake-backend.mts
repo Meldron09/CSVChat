@@ -72,6 +72,12 @@ const LINE_CHART: ChartSpec = {
   data: [{ month: "2024-08", revenue: 120 }, { month: "2024-09", revenue: 150 }, { month: "2024-10", revenue: 135 }],
 };
 
+const BAR_CHART: ChartSpec = {
+  type: "bar", title: "Revenue by region", x_key: "region", x_label: "Region", y_label: "Revenue (USD)",
+  series: [{ key: "revenue", label: "Revenue" }, { key: "cost", label: "Cost" }],
+  data: [{ region: "North", revenue: 12400, cost: 8100 }, { region: "South", revenue: 25000, cost: 15200 }, { region: "West", revenue: 1234567, cost: 900000 }],
+};
+
 // ---------- multipart (just enough: filenames, file text, plain fields) ----------
 function parseMultipart(req: IncomingMessage, body: Buffer) {
   const boundary = /boundary=(?:"([^"]+)"|([^;]+))/.exec(req.headers["content-type"] ?? "");
@@ -157,13 +163,13 @@ async function messages(chat: Chat, req: IncomingMessage, res: ServerResponse) {
       return;
     }
     if (q.includes("drop")) return; // stream closes with no terminal event
-    const wantsChart = q.includes("chart") || q.includes("malformed");
+    const wantsChart = q.includes("chart") || q.includes("malformed") || q.includes("multi");
     if (wantsChart) await send({ event: "step", data: { node: "chart_builder", message: "Deciding whether charts are warranted" } });
     await send({ event: "step", data: { node: "synthesizer", message: "Writing the answer" } });
     const text = `Revenue grew **12%** over the period. (As-of Date used: ${as_of_date || SAMPLE_AS_OF})`;
     for (const word of text.match(/\S+\s*/g) ?? []) await send({ event: "token", data: { text: word } });
     const bad = { type: "line", title: "Broken chart" } as unknown as ChartSpec; // "malformed": violates the Chart Spec
-    const charts = q.includes("malformed") ? [bad] : wantsChart ? [LINE_CHART] : [];
+    const charts = q.includes("malformed") ? [bad] : q.includes("multi") ? [BAR_CHART] : wantsChart ? [LINE_CHART] : [];
     turn.answer = text; turn.charts = charts;
     await send({ event: "answer", data: { text, as_of_date: as_of_date || SAMPLE_AS_OF, charts } });
   } finally {
