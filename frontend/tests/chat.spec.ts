@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 
 test("loads the sample dataset", async ({ page }) => {
   await page.getByRole("button", { name: "Load sample dataset" }).click();
-  await expect(page.getByLabel("Cleaning Report for orders")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible();
   await expect(page.getByLabel("Relationships")).toBeVisible();
   await expect(page.getByLabel("As-of Date")).toHaveValue("2024-11-04");
 });
@@ -36,5 +36,5 @@ test("shows partial Cleaning Reports when an upload is rejected", async ({ page 
   await page.getByRole("button", { name: "Upload CSVs" }).click();
   await expect(page.getByText("bad.csv: could not parse as CSV")).toBeVisible();
   await expect(page.getByText("1 earlier file(s) were loaded")).toBeVisible();
-  await expect(page.getByLabel("Cleaning Report for good")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^good\b/ })).toBeVisible();
 });

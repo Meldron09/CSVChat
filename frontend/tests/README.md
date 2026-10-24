@@ -43,6 +43,10 @@ sees. `GET http://127.0.0.1:4010/__test/calls` returns every `METHOD /path` the 
 The fake keeps state per Chat and records finished Turns, so reloading shows the Transcript like the real backend.
 Tests can read what was saved with `GET http://127.0.0.1:${FAKE_BACKEND_PORT}/chats/{id}` (e.g. `as_of_date`, `dataset_notes`); a question's Answer echoes the As-of Date it was sent.
 
+`tables.spec.ts` needs no extra fake scenarios: the sample's `orders` Table (97 rows, IQR outlier flag, 3 duplicates removed) is
+the flagged one; an uploaded CSV with a repeated line gives a "1 flagged" Table; a single upload has no relationships (the
+empty message); `orders` and `customers` together give one relationship.
+
 ## Scenario triggers
 
 Questions (`POST /chats/{id}/messages`), matched case-insensitively anywhere in the question. Default: steps, SQL, streamed
