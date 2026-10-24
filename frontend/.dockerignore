@@ -1,6 +1,8 @@
+# Anything excluded here must not be imported by a file tsconfig includes (`next build` type-checks **/*.ts in the image).
 node_modules
 .next
 tests
+playwright.config.ts
 test-results
 playwright-report
 .env*
