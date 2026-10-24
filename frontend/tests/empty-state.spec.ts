@@ -64,6 +64,20 @@ test("a running Turn replaces the starter questions at once, so none can be sent
   await expect(question(page)).toBeEnabled();
 });
 
+test("keyboard focus on a starter question survives the Turn replacing it", async ({ page }) => {
+  await loadSample(page);
+  let release!: () => void;
+  await page.route("**/api/chats/*/messages", async (route) => {
+    await new Promise<void>((r) => (release = r)); // hold the request: the Turn stays running
+    await route.continue();
+  });
+  await page.getByRole("region", { name: "Start with a question" }).getByRole("button").first().focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { level: 1, name: "CSVChat conversation" })).toBeFocused(); // not <body>: the message box is disabled meanwhile
+  release();
+  await expect(question(page)).toBeFocused(); // the composer's return-after-busy takes over
+});
+
 test("phone width: the graph scrolls inside its card, not the page", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await transcript(page).getByRole("button", { name: "Load sample dataset" }).click(); // no Tables: the main pane's

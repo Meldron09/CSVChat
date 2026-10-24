@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChatEvent } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { readSse } from "@/lib/sse";
@@ -16,8 +16,21 @@ export function ChatPane({ chatId, initialTurns }: { chatId: string; initialTurn
   const { asOfDate } = useAsOfDate();
   const [turns, setTurns] = useState<Turn[]>(initialTurns); // the saved transcript; new turns append
   const busy = turns.some((t) => t.status === "running");
-  const { setTurnCount } = useDataset();
+  const { setTurnCount, hasTables } = useDataset();
   useEffect(() => setTurnCount(turns.length), [turns.length, setTurnCount]); // the header's New chat guard needs it
+
+  // Keyboard focus inside the empty state survives it being replaced: when Tables arrive (the drop zone and sample button go)
+  // focus moves to the message box; when the first Turn starts (all of it goes) to the conversation heading, as the message
+  // box is disabled while the Turn runs. Only when focus was in the empty state and is now lost (on <body>): never stolen.
+  // Effects run child-first, so the Composer has already seen <body> and will return focus to the message box when the Turn ends.
+  const box = useRef<HTMLTextAreaElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const emptyHadFocus = useRef(false);
+  useEffect(() => {
+    if (!emptyHadFocus.current || (document.activeElement && document.activeElement !== document.body)) return;
+    emptyHadFocus.current = false;
+    (turns.length > 0 ? heading.current : box.current)?.focus();
+  }, [hasTables, turns.length]);
 
   const update = (id: number, change: (t: Turn) => Partial<Turn>) =>
     setTurns((all) => all.map((t) => (t.id === id ? { ...t, ...change(t) } : t)));
@@ -53,9 +66,26 @@ export function ChatPane({ chatId, initialTurns }: { chatId: string; initialTurn
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      {turns.length > 0 && <h1 className="sr-only">CSVChat conversation</h1> /* before the first Turn, the EmptyState's h1 */}
-      <Transcript turns={turns} onRetry={ask} busy={busy} empty={<EmptyState onAsk={ask} busy={busy} />} />
-      <Composer busy={busy} onSend={ask} />
+      {turns.length > 0 && ( // before the first Turn, the EmptyState's h1
+        <h1 ref={heading} tabIndex={-1} className="sr-only">
+          CSVChat conversation
+        </h1>
+      )}
+      <Transcript
+        turns={turns}
+        onRetry={ask}
+        busy={busy}
+        empty={
+          <div
+            onFocus={() => (emptyHadFocus.current = true)}
+            // focus moved to another element outside; a blur to nowhere (the element was removed or disabled) keeps the flag
+            onBlur={(e) => e.relatedTarget && !e.currentTarget.contains(e.relatedTarget) && (emptyHadFocus.current = false)}
+          >
+            <EmptyState onAsk={ask} busy={busy} />
+          </div>
+        }
+      />
+      <Composer busy={busy} onSend={ask} box={box} />
     </div>
   );
 }

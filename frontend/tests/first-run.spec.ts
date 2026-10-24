@@ -136,3 +136,20 @@ test("the page has exactly one h1: the empty state's, then a hidden one once the
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("CSVChat conversation");
   await expect(page.getByRole("heading", { name: "How your tables connect" })).toHaveCount(0); // the first Turn replaced the empty state
 });
+
+test("keyboard focus survives the drop zone going away: the sample button hands it to the message box", async ({ page }) => {
+  const sample = page.getByRole("button", { name: "Load sample dataset" });
+  await sample.focus();
+  await page.keyboard.press("Enter");
+  await expect(table(page, "orders")).toBeVisible();
+  await expect(question(page)).toBeFocused();
+  expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
+});
+
+test("focus elsewhere is left alone when Tables arrive", async ({ page }) => {
+  const date = page.getByLabel("As-of Date"); // (the notes box is disabled while loading, so it cannot keep focus)
+  await date.focus();
+  await page.getByRole("button", { name: "Load sample dataset" }).dispatchEvent("click"); // without moving focus
+  await expect(table(page, "orders")).toBeVisible();
+  await expect(date).toBeFocused();
+});

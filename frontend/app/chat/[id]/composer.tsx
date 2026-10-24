@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Button, Textarea } from "@/components/ui";
 import { useAsOfDate } from "./as-of-date";
 import { useDataset } from "./dataset-context";
@@ -9,11 +9,10 @@ import { useDataset } from "./dataset-context";
  * The message box, pinned under the Transcript: Enter sends, Shift+Enter adds a newline, grows with its text, disabled while `busy`
  * or until a Table exists (with a hint).
  */
-export function Composer({ busy, onSend }: { busy: boolean; onSend: (question: string) => void }) {
+export function Composer({ busy, onSend, box }: { busy: boolean; onSend: (question: string) => void; box: RefObject<HTMLTextAreaElement | null> }) {
   const [question, setQuestion] = useState("");
   const { asOfDate } = useAsOfDate();
   const { hasTables } = useDataset();
-  const box = useRef<HTMLTextAreaElement>(null);
   const hadFocus = useRef(false);
 
   // Auto-grow: fit the content; the CSS max-height then makes it scroll.
