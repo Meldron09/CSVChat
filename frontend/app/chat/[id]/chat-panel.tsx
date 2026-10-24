@@ -3,6 +3,8 @@
 import { createContext, useEffect, useState, type ReactNode } from "react";
 import type { ChatEvent } from "@/lib/api";
 import { readSse } from "@/lib/sse";
+import { Button, Input } from "@/components/ui";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { TurnView, type Turn } from "./turn";
 
 /** The browser's local today as YYYY-MM-DD. */
@@ -74,16 +76,17 @@ export function ChatPanel({ chatId, savedAsOf, initialTurns, children }: { chatI
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">CSVChat</h1>
-          <p className="mt-2 text-sm text-zinc-500">Chat {chatId}</p>
+          <p className="mt-2 text-sm text-muted">Chat {chatId}</p>
         </div>
+        <ThemeToggle />
         <label className="flex flex-col text-sm">
           As-of Date
-          <input
+          <Input
             type="date"
             value={asOfDate}
             onChange={(e) => setAsOfDate(e.target.value)}
             required
-            className="rounded border border-zinc-400 p-1"
+            className="p-1"
           />
         </label>
       </header>
@@ -100,21 +103,17 @@ export function ChatPanel({ chatId, savedAsOf, initialTurns, children }: { chatI
           ask();
         }}
       >
-        <input
+        <Input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask a question about your data"
           aria-label="Question"
-          className="flex-1 rounded border border-zinc-400 p-2 text-sm"
+          className="flex-1"
           disabled={busy}
         />
-        <button
-          type="submit"
-          disabled={busy || !question.trim()} // a blank As-of Date is allowed: the Orchestrator asks for it
-          className="rounded bg-zinc-900 px-4 py-2 text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
-        >
+        <Button type="submit" disabled={busy || !question.trim()} /* a blank As-of Date is allowed: the Orchestrator asks for it */>
           {busy ? "Working…" : "Ask"}
-        </button>
+        </Button>
       </form>
     </>
   );

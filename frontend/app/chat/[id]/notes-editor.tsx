@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button, Textarea } from "@/components/ui";
 
 /** Dataset Notes box (also submitted with the upload form) plus a Save button: notes stay editable any time. */
 export function NotesEditor({
@@ -32,7 +33,7 @@ export function NotesEditor({
 
   return (
     <>
-      <textarea
+      <Textarea
         name="dataset_notes"
         value={notes}
         onChange={(e) => {
@@ -41,14 +42,14 @@ export function NotesEditor({
         }}
         aria-label="Dataset Notes"
         placeholder="Dataset Notes (optional): business definitions the analysis must follow, e.g. what counts as revenue"
-        className="min-h-20 rounded border border-zinc-400 p-2 text-sm"
+        className="min-h-20"
         disabled={disabled}
       />
       <div className="flex items-center gap-3 text-sm">
-        <button type="button" onClick={save} disabled={disabled} className="rounded border border-zinc-400 px-3 py-1 disabled:opacity-60">
+        <Button type="button" variant="secondary" onClick={save} disabled={disabled} className="px-3 py-1">
           Save notes
-        </button>
-        {status && <span role="status" className="text-zinc-500">{status}</span>}
+        </Button>
+        {status && <span role="status" className="text-muted">{status}</span>}
       </div>
     </>
   );

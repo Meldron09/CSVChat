@@ -1,6 +1,7 @@
 "use client";
 
 import { Component, type ReactNode } from "react";
+import { Card } from "@/components/ui";
 import { CHART_TYPES, type ChartSpec } from "@/lib/chart-spec";
 import {
   Bar,
@@ -102,7 +103,7 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
 }
 
 const Unavailable = () => (
-  <p role="alert" className="text-xs text-zinc-500">
+  <p role="alert" className="text-xs text-muted">
     A chart could not be displayed.
   </p>
 );
@@ -112,7 +113,7 @@ export function ChartView({ spec: raw }: { spec: unknown }) {
   const spec = parseSpec(raw);
   if (!spec) return <Unavailable />;
   return (
-    <figure className="rounded border border-zinc-300 p-3" aria-label={`Chart: ${spec.title}`}>
+    <Card as="figure" className="p-3" aria-label={`Chart: ${spec.title}`}>
       <figcaption className="mb-2 text-sm font-medium">{spec.title}</figcaption>
       <div className="h-72 w-full">
         <Boundary>
@@ -121,6 +122,6 @@ export function ChartView({ spec: raw }: { spec: unknown }) {
           </ResponsiveContainer>
         </Boundary>
       </div>
-    </figure>
+    </Card>
   );
 }

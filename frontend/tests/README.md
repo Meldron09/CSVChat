@@ -50,3 +50,8 @@ re-uploading a filename sets `replaced`).
 
 Other: `POST /chats/{id}/sample` loads 8 tables, the sample notes and As-of Date `2024-11-04`. Saving Dataset Notes containing
 `FAIL_SAVE` returns 500 (notes save failure). Add new scenarios in `fake-backend.mts` and list them here.
+
+## Theme tests (`theme.spec.ts`)
+
+Colours are CSS `light-dark()` tokens, so tests switch the OS with `page.emulateMedia({ colorScheme })` and assert the computed
+`body` background. The no-flash test blocks `/_next/static/**/*.js` so only the inline `<head>` script can have applied the theme.

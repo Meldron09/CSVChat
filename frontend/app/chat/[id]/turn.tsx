@@ -1,3 +1,4 @@
+import { Card } from "@/components/ui";
 import type { TranscriptTurn } from "@/lib/api";
 import type { ChartSpec } from "@/lib/chart-spec";
 import { ChartView } from "./chart";
@@ -24,11 +25,11 @@ export function fromTranscript(t: TranscriptTurn, id: number): Turn {
 export function TurnView({ turn }: { turn: Turn }) {
   return (
     <article className="flex flex-col gap-3 text-sm" aria-label={`Question: ${turn.question}`}>
-      <p className="self-end rounded bg-zinc-900 px-3 py-2 text-white dark:bg-zinc-100 dark:text-zinc-900">
+      <p className="self-end rounded-card bg-accent px-3 py-2 text-accent-foreground">
         {turn.question} <span className="text-xs opacity-60">(as of {turn.asOfDate})</span>
       </p>
       {turn.steps.length > 0 && (
-        <ol className="list-decimal pl-5 text-zinc-500" aria-label="Progress">
+        <ol className="list-decimal pl-5 text-muted" aria-label="Progress">
           {turn.steps.map((s, i) => (
             <li key={i}>
               {s}
@@ -38,15 +39,15 @@ export function TurnView({ turn }: { turn: Turn }) {
         </ol>
       )}
       {turn.queries.map((q, i) => (
-        <details key={i} open className="rounded border border-zinc-300 p-2" aria-label="SQL query">
-          <summary className="cursor-pointer text-xs text-zinc-500">Task {q.task + 1} SQL: {q.subQuestion}</summary>
+        <Card as="details" key={i} open className="p-2" aria-label="SQL query">
+          <summary className="cursor-pointer text-xs text-muted">Task {q.task + 1} SQL: {q.subQuestion}</summary>
           <pre className="mt-1 overflow-x-auto whitespace-pre-wrap text-xs">{q.sql}</pre>
-        </details>
+        </Card>
       ))}
-      {turn.text && <p className="whitespace-pre-wrap rounded border border-zinc-300 px-3 py-2">{turn.text}</p>}
+      {turn.text && <Card as="p" className="whitespace-pre-wrap px-3 py-2">{turn.text}</Card>}
       {turn.charts?.map((spec, i) => <ChartView key={i} spec={spec} />)}
       {turn.status === "error" && (
-        <p role="alert" className="text-red-600">
+        <p role="alert" className="text-danger">
           This question failed: {turn.error}
         </p>
       )}
