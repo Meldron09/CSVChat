@@ -15,16 +15,17 @@ const components = {
   h5: (p: ComponentProps<"h5">) => <h5 {...p} className="font-semibold" />,
   h6: (p: ComponentProps<"h6">) => <h6 {...p} className="font-semibold" />,
   a: (p: ComponentProps<"a">) => <a {...p} target="_blank" rel="noopener noreferrer" className="text-brand underline" />,
-  code: (p: ComponentProps<"code">) => <code {...p} className="rounded-control bg-background px-1 text-xs" />,
-  pre: (p: ComponentProps<"pre">) => <pre {...p} className="overflow-x-auto rounded-control bg-background p-2 text-xs" />,
+  code: (p: ComponentProps<"code">) => <code {...p} className="rounded-chip bg-surface px-1 font-mono text-sm" />,
+  pre: (p: ComponentProps<"pre">) => <pre {...p} tabIndex={0} className="overflow-x-auto whitespace-pre rounded-control border border-border bg-surface p-3 font-mono text-sm" />,
   blockquote: (p: ComponentProps<"blockquote">) => <blockquote {...p} className="border-l-2 border-border-strong pl-3 text-muted" />,
+  // Tables get the card treatment (the only Answer element that does, besides charts); wide ones scroll inside it.
   table: (p: ComponentProps<"table">) => (
-    <div className="overflow-x-auto">
-      <table {...p} className="border-collapse text-left" />
+    <div tabIndex={0} className="overflow-x-auto rounded-card border border-border bg-background shadow-sm">
+      <table {...p} className="w-full border-collapse text-left text-sm" />
     </div>
   ),
-  th: (p: ComponentProps<"th">) => <th {...p} className="border border-border px-2 py-1 font-semibold" />,
-  td: (p: ComponentProps<"td">) => <td {...p} className="border border-border px-2 py-1" />,
+  th: (p: ComponentProps<"th">) => <th {...p} className="whitespace-nowrap bg-surface px-4 py-2 font-semibold" />,
+  td: (p: ComponentProps<"td">) => <td {...p} className="border-t border-border px-4 py-2" />,
 };
 
 export function AnswerMarkdown({ children }: { children: string }) {

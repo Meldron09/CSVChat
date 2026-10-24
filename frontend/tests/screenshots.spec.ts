@@ -5,7 +5,7 @@ import { csv, loadSample, openChat, question, shoot } from "./helpers";
 // Visual review harness, not a regression test: SHOTS=1 SHOTS_DIR=/some/dir npx playwright test screenshots
 // Later redesign stages add states here and bump STAGE.
 test.skip(!process.env.SHOTS, "set SHOTS=1 and SHOTS_DIR to write screenshots");
-const STAGE = process.env.SHOTS_STAGE ?? "stage-5";
+const STAGE = process.env.SHOTS_STAGE ?? "stage-6";
 
 test("empty chat", async ({ page }) => {
   await openChat(page);
@@ -170,5 +170,53 @@ test.describe("composer", () => {
     await question(page).press("Enter");
     await expect(page.getByRole("button", { name: "Working…" })).toBeDisabled();
     await shoot(page, STAGE, "composer-busy");
+  });
+});
+
+test.describe("turns", () => {
+  test("finished: chart, table, SQL", async ({ page }) => {
+    await openChat(page);
+    await loadSample(page);
+    await question(page).fill("multi series chart markdown tasks please");
+    await question(page).press("Enter");
+    await expect(page.getByLabel("Chart: Revenue by region")).toBeVisible();
+    await expect(question(page)).toBeEnabled();
+    await shoot(page, STAGE, "turn-finished-closed");
+    await page.getByText("How this was answered").click();
+    await shoot(page, STAGE, "turn-finished-open");
+  });
+
+  test("running, mid-stream", async ({ page }) => {
+    await openChat(page);
+    await loadSample(page);
+    // The fake backend always finishes its stream, so replace the messages call with one that sends three steps and some text, then stays open.
+    await page.evaluate(() => {
+      const real = window.fetch;
+      window.fetch = (input, init) => {
+        if (!String(input instanceof Request ? input.url : input).endsWith("/messages")) return real(input, init);
+        const frames = [
+          'event: step\ndata: {"node":"orchestrator","message":"Planning the analysis"}\n\n',
+          'event: step\ndata: {"node":"sql_analyst","message":"Task 1: writing SQL for: Revenue by region","task":0}\n\n',
+          'event: step\ndata: {"node":"synthesizer","message":"Writing the answer"}\n\n',
+          'event: token\ndata: {"text":"Revenue grew "}\n\n',
+          'event: token\ndata: {"text":"12% over the period, led by the North region."}\n\n',
+        ];
+        const body = new ReadableStream({ start: (c) => frames.forEach((f) => c.enqueue(new TextEncoder().encode(f))) });
+        return Promise.resolve(new Response(body, { headers: { "content-type": "text/event-stream" } }));
+      };
+    });
+    await question(page).fill("Revenue by region");
+    await question(page).press("Enter");
+    await expect(page.getByText("12% over the period")).toBeVisible();
+    await shoot(page, STAGE, "turn-running");
+  });
+
+  test("failed", async ({ page }) => {
+    await openChat(page);
+    await loadSample(page);
+    await question(page).fill("this will fail");
+    await question(page).press("Enter");
+    await expect(page.getByText("This question failed")).toBeVisible();
+    await shoot(page, STAGE, "turn-failed");
   });
 });

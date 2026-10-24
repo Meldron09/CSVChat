@@ -6,14 +6,17 @@ test.beforeEach(async ({ page }) => {
   await loadSample(page); // the composer is disabled until a Table is loaded
 });
 
-test("a running Turn shows one status line and streaming text; the live region skips the streamed tokens", async ({ page }) => {
+test("a running Turn shows its steps and streaming text; the live region skips the streamed tokens", async ({ page }) => {
   await box(page).fill("slow question");
   await box(page).press("Enter");
   const t = transcript(page);
   await expect(t).toHaveAttribute("aria-live", "polite");
   await expect(t.getByText("Planning the analysis…")).toBeVisible();
   await expect(t.getByText("Task 1: writing SQL for: slow question…")).toBeVisible();
-  await expect(t.getByText("Planning the analysis")).toHaveCount(0); // a single line: the latest step replaces the earlier ones
+  await expect(t.getByText("Planning the analysis…")).toHaveCount(0); // only the step in progress ends in an ellipsis: earlier steps stay listed as done
+  await expect(t.getByRole("listitem").filter({ hasText: "Planning the analysis" })).toHaveCount(1);
+  await expect(t.getByRole("listitem").filter({ hasText: "Task 1: writing SQL for: slow question" })).toHaveCount(1);
+  await expect(t.locator('li[aria-current="step"]')).toHaveCount(1); // exactly one step is marked in progress
   await expect(t.getByText("Writing the answer…")).toBeVisible();
   const streaming = t.locator('[aria-hidden="true"]').getByText("Revenue");
   await expect(streaming).toBeVisible(); // text streams in while still running...
@@ -22,6 +25,47 @@ test("a running Turn shows one status line and streaming text; the live region s
   await expect(t.getByText("Writing the answer…")).toHaveCount(0); // status line is gone when done
   await expect(t.locator('[aria-hidden="true"]').getByText("Revenue")).toHaveCount(0); // the finished Answer is announced
   await expect(t.getByText("Revenue grew")).toBeVisible();
+});
+
+test("a running Turn lists its steps, the last one in progress; finishing folds them into the closed disclosure", async ({ page }) => {
+  await box(page).fill("slow question");
+  await box(page).press("Enter");
+  const steps = transcript(page).getByRole("list");
+  await expect(steps.getByRole("listitem")).toHaveCount(3, { timeout: 10_000 }); // planning, task 1, writing the answer
+  await expect(steps.getByRole("listitem").last()).toHaveAttribute("aria-current", "step");
+  await expect(steps.getByRole("listitem").first()).not.toHaveAttribute("aria-current", "step");
+  await expect(box(page)).toBeEnabled({ timeout: 15_000 });
+  const turn = page.getByRole("article");
+  await expect(turn.locator('li[aria-current="step"]')).toHaveCount(0);
+  await expect(turn.locator("details")).not.toHaveAttribute("open", "");
+});
+
+test("Copy SQL copies the statement and says so; a failed copy says so too", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await ask(page, "tasks please");
+  const turn = page.getByRole("article");
+  await turn.locator("details").getByText("How this was answered").click();
+  const task2 = turn.getByRole("region", { name: "Task 2" });
+  const copy = task2.getByRole("button", { name: "Copy SQL" });
+  expect((await copy.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await expect(task2.getByRole("status")).toHaveText("");
+  await copy.click();
+  await expect(task2.getByRole("status")).toHaveText("Copied");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("SELECT region, COUNT(*) AS orders FROM orders GROUP BY 1");
+  await expect(turn.getByRole("region", { name: "Task 1" }).getByRole("status")).toHaveText(""); // only that block says Copied
+
+  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { value: { writeText: () => Promise.reject(new Error("denied")) } }));
+  await copy.click();
+  await expect(task2.getByRole("status")).toHaveText("Could not copy the SQL");
+});
+
+test("SQL scrolls sideways instead of wrapping", async ({ page }) => {
+  await ask(page, "tasks please");
+  const turn = page.getByRole("article");
+  await turn.locator("details").getByText("How this was answered").click();
+  const sql = turn.getByText("SELECT region").first();
+  expect(await sql.evaluate((el) => getComputedStyle(el).whiteSpace)).toBe("pre");
+  expect(await sql.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/mono/i);
 });
 
 test("a finished Turn shows the Answer, its Chart and a closed disclosure grouped by task", async ({ page }) => {

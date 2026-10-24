@@ -30,16 +30,19 @@ const tipFmt = (v: unknown) => (typeof v === "number" ? full.format(v) : String(
 const axisProps = { tick: { fill: "var(--muted)", fontSize: 12 }, stroke: "var(--border)" };
 const labelStyle = { fill: "var(--muted)", fontSize: 12, textAnchor: "middle" } as const;
 const grid = <CartesianGrid stroke="var(--border)" strokeOpacity={0.5} vertical={false} />;
+// Hover highlight (bar column / line cursor) in tokens; recharts would otherwise draw its own grey.
+const cursor = { stroke: "var(--border-strong)", fill: "var(--border)", fillOpacity: 0.4 };
 const tooltip = (extra?: object) => (
   <Tooltip
+    cursor={cursor}
     formatter={tipFmt}
-    contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--foreground)" }}
+    contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--foreground)" }}
     itemStyle={{ color: "var(--foreground)" }}
     labelStyle={{ color: "var(--muted)" }}
     {...extra}
   />
 );
-const legend = (extra?: object) => <Legend wrapperStyle={{ color: "var(--foreground)", fontSize: 12 }} {...extra} />;
+const legend = (extra?: object) => <Legend wrapperStyle={{ fontSize: 12 }} formatter={(v) => <span style={{ color: "var(--foreground)" }}>{v}</span>} {...extra} />;
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const isStr = (v: unknown): v is string => typeof v === "string" && v !== "";
 
@@ -87,7 +90,7 @@ function Plot({ spec }: { spec: ChartSpec }) {
         {grid}
         {xAxis({ type: "number", name: x_label })}
         {yAxis({ type: "number", dataKey: s.key, name: y_label })}
-        {tooltip({ cursor: { strokeDasharray: "3 3" } })}
+        {tooltip({ cursor: { ...cursor, strokeDasharray: "3 3" } })}
         <Scatter isAnimationActive={false} name={s.label} data={data} fill={COLORS[0]} />
       </ScatterChart>
     );
@@ -122,7 +125,7 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
 }
 
 const Unavailable = () => (
-  <p role="alert" className="text-xs text-muted">
+  <p role="alert" className="text-sm text-muted">
     A chart could not be displayed.
   </p>
 );
@@ -132,8 +135,8 @@ export function ChartView({ spec: raw }: { spec: unknown }) {
   const spec = parseSpec(raw);
   if (!spec) return <Unavailable />;
   return (
-    <Card as="figure" className="p-3" aria-label={`Chart: ${spec.title}`}>
-      <figcaption className="mb-2 text-sm font-medium">{spec.title}</figcaption>
+    <Card as="figure" aria-label={`Chart: ${spec.title}`}>
+      <figcaption className="mb-2 text-base font-semibold">{spec.title}</figcaption>
       <div className="h-72 w-full">
         <Boundary>
           <ResponsiveContainer width="100%" height="100%">
