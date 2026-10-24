@@ -39,7 +39,7 @@ test("New chat on an empty Chat navigates without a confirmation", async ({ page
 test.describe("a Chat with Tables", () => {
   test.beforeEach(async ({ page }) => {
     await page.getByRole("button", { name: "Load sample dataset" }).click();
-    await expect(page.getByLabel("Cleaning Report for orders")).toBeVisible(); // no reload: the header learns it live
+    await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible(); // no reload: the header learns it live
     await newChat(page).click();
     await expect(confirm(page)).toBeVisible();
   });
@@ -90,7 +90,7 @@ test("New chat on a Chat with only a Turn asks for confirmation", async ({ page 
 
 test("a saved Chat with Tables asks for confirmation straight after loading", async ({ page }) => {
   await page.getByRole("button", { name: "Load sample dataset" }).click();
-  await expect(page.getByLabel("Cleaning Report for orders")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible();
   await page.reload();
   await newChat(page).click();
   await expect(confirm(page)).toBeVisible();
@@ -99,7 +99,7 @@ test("a saved Chat with Tables asks for confirmation straight after loading", as
 test("loading a Chat page or hovering New chat never requests the root address", async ({ page }) => {
   const root = watchRootRequests(page); // created after the beforeEach navigation, so only later requests count
   await page.getByRole("button", { name: "Load sample dataset" }).click();
-  await expect(page.getByLabel("Cleaning Report for orders")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible();
   await page.reload();
   await page.waitForLoadState("networkidle");
   await newChat(page).hover();

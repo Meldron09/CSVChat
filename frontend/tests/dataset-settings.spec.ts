@@ -22,13 +22,13 @@ test("As-of Date defaults to the browser's local today and shows in the composer
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
   await expect(dateField(page)).toHaveValue(today);
-  await expect(page.getByText(`as of ${today}`, { exact: true })).toBeVisible();
+  await expect(page.locator("form").getByText(`as of ${today}`, { exact: true })).toBeVisible();
   await expect(page.getByText("counted back from this date")).toBeVisible(); // helper text: "past year" etc. resolve against it
 });
 
 test("editing the As-of Date updates the composer label, is saved, and is sent with the next question", async ({ page }) => {
   await dateField(page).fill("2024-03-15");
-  await expect(page.getByText("as of 2024-03-15", { exact: true })).toBeVisible();
+  await expect(page.locator("form").getByText("as of 2024-03-15", { exact: true })).toBeVisible();
   await expect.poll(async () => (await saved(page)).as_of_date).toBe("2024-03-15");
 
   await page.getByRole("textbox", { name: "Question" }).fill("How many orders?");
@@ -37,7 +37,7 @@ test("editing the As-of Date updates the composer label, is saved, and is sent w
 
   await page.reload(); // restored when the Chat is resumed
   await expect(dateField(page)).toHaveValue("2024-03-15");
-  await expect(page.getByText("as of 2024-03-15", { exact: true })).toBeVisible();
+  await expect(page.locator("form").getByText("as of 2024-03-15", { exact: true })).toBeVisible();
 });
 
 test("a blank As-of Date is allowed", async ({ page }) => {
