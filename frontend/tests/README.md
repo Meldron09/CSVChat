@@ -78,3 +78,7 @@ Colours are CSS `light-dark()` tokens, so tests switch the OS with `page.emulate
 
 Chart colours are CSS variables (`--chart-*`, axis and grid tokens), so tests switch the OS with `emulateMedia` and compare the
 computed `fill`/`stroke` of SVG elements. Compact numbers use `Intl.NumberFormat` in the browser locale (Playwright: en-US).
+
+## Shell tests (`shell.spec.ts`)
+
+Layout at wide (default 1280px) and phone (`test.use({ viewport })`, 390px) widths, the sidebar drawer (a native `<dialog>`: focus trap/restore, Escape), composer keys and auto-grow, the pinned composer, and Transcript auto-scroll. The Transcript is `getByRole("region", { name: "Transcript" })`; scroll it with `el.scrollTop = ...` in `evaluate`. Use the `slow` keyword to hold a Turn in the running state. Note `getByLabel("Question")` also matches Turn articles (`aria-label="Question: ..."`) once a Turn exists: use `getByRole("textbox", { name: "Question", exact: true })`.
