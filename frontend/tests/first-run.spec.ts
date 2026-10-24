@@ -13,6 +13,7 @@ test("an empty Chat shows the drop zone, the sample option and a disabled compos
   await expect(page.getByRole("button", { name: "Load sample dataset" })).toBeEnabled();
   await expect(question(page)).toBeDisabled();
   await expect(page.getByRole("button", { name: "Ask" })).toBeDisabled();
+  expect(await page.getByRole("button", { name: "Ask" }).evaluate((el) => getComputedStyle(el).fontSize)).toBe("16px"); // R3: the white-on-red label is 16px+ semibold
   await expect(page.getByText("Add data to start asking")).toBeVisible();
   await expect(question(page)).toHaveAccessibleDescription(/Add data to start asking/);
   await expect(summary(page)).toHaveCount(0); // nothing loaded yet

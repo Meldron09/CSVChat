@@ -10,15 +10,15 @@ const variants: Record<Variant, string> = {
   // The red accent: used ONLY by the Ask button. The label is 16px+ semibold (white on the red is ~3.35:1).
   primary: "border-accent bg-accent text-accent-foreground text-base font-semibold enabled:hover:bg-accent-hover enabled:hover:border-accent-hover enabled:active:bg-accent-press enabled:active:border-accent-press",
   // Filled brand purple: other confirm actions (the New-chat dialog's confirm link).
-  brand: "border-brand bg-brand text-brand-foreground font-semibold enabled:hover:bg-brand/85",
-  secondary: "border-brand bg-transparent text-brand font-semibold enabled:hover:bg-brand/10",
-  ghost: "border-transparent bg-transparent text-brand font-semibold enabled:hover:bg-brand/10",
+  brand: "border-brand bg-brand text-brand-foreground text-sm font-semibold enabled:hover:bg-brand/85",
+  secondary: "border-brand bg-transparent text-brand text-sm font-semibold enabled:hover:bg-brand/10",
+  ghost: "border-transparent bg-transparent text-brand text-sm font-semibold enabled:hover:bg-brand/10",
 };
 
 /** Button styling, also for links that look like buttons. Pill, at least 44px tall. */
 export const buttonClass = (variant: Variant, className?: string) =>
   cx(
-    "inline-flex min-h-11 items-center justify-center rounded-full border px-5 py-2 text-sm transition-colors disabled:opacity-60",
+    "inline-flex min-h-11 items-center justify-center rounded-full border px-5 py-2 transition-colors disabled:opacity-60",
     variants[variant],
     className,
   );
