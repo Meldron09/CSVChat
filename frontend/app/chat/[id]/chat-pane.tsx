@@ -20,7 +20,7 @@ export function ChatPane({ chatId, initialTurns }: { chatId: string; initialTurn
     setTurns((all) => all.map((t) => (t.id === id ? { ...t, ...change(t) } : t)));
 
   function apply(id: number, { event, data }: ChatEvent) {
-    if (event === "step") update(id, (t) => ({ steps: [...t.steps, data.message] }));
+    if (event === "step") update(id, (t) => ({ steps: [...t.steps, { message: data.message, task: data.task }] }));
     else if (event === "sql") update(id, (t) => ({ queries: [...t.queries, { task: data.task, subQuestion: data.sub_question, sql: data.sql }] }));
     else if (event === "token") update(id, (t) => ({ text: t.text + data.text }));
     else if (event === "answer") update(id, () => ({ text: data.text, charts: data.charts, status: "done" }));
@@ -50,7 +50,7 @@ export function ChatPane({ chatId, initialTurns }: { chatId: string; initialTurn
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      <Transcript turns={turns} />
+      <Transcript turns={turns} onRetry={ask} busy={busy} />
       <Composer busy={busy} onSend={ask} />
     </div>
   );
