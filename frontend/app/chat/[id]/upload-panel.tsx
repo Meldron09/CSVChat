@@ -1,8 +1,9 @@
 "use client";
 
-import { useContext, useState } from "react";
+import { useState } from "react";
 import type { CleaningReport, SchemaProfile } from "@/lib/api";
-import { SetAsOfDate } from "./chat-panel";
+import { Button, Card } from "@/components/ui";
+import { useAsOfDate } from "./as-of-date";
 import { NotesEditor } from "./notes-editor";
 
 export function UploadPanel({
@@ -19,7 +20,7 @@ export function UploadPanel({
   const [reports, setReports] = useState(initialReports);
   const [profile, setProfile] = useState(initialProfile);
   const [notes, setNotes] = useState(initialNotes);
-  const setAsOfDate = useContext(SetAsOfDate);
+  const { setAsOfDate } = useAsOfDate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +56,7 @@ export function UploadPanel({
   const loadSample = () => send("sample");
 
   return (
-    <section className="mt-8">
+    <section className="mt-6">
       <form
         className="flex flex-col gap-3"
         onSubmit={(e) => {
@@ -66,20 +67,16 @@ export function UploadPanel({
         <input type="file" name="files" accept=".csv" multiple required disabled={busy} aria-label="CSV files" />
         <NotesEditor chatId={chatId} notes={notes} setNotes={setNotes} disabled={busy} />
         <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded bg-zinc-900 px-4 py-2 text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
-          >
+          <Button type="submit" disabled={busy}>
             {busy ? "Cleaning and loading…" : "Upload CSVs"}
-          </button>
-          <button type="button" onClick={loadSample} disabled={busy} className="rounded border border-zinc-400 px-4 py-2 disabled:opacity-60">
+          </Button>
+          <Button type="button" variant="secondary" onClick={loadSample} disabled={busy}>
             Load sample dataset
-          </button>
+          </Button>
         </div>
       </form>
-      {busy && <p role="status" className="mt-3 text-sm text-zinc-500">Ingesting files, this can take a while for large CSVs.</p>}
-      {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
+      {busy && <p role="status" className="mt-3 text-sm text-muted">Ingesting files, this can take a while for large CSVs.</p>}
+      {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
       {profile && <Profile profile={profile} />}
       <div className="mt-6 flex flex-col gap-4">
         {reports.map((r) => (
@@ -92,16 +89,16 @@ export function UploadPanel({
 
 function Profile({ profile }: { profile: SchemaProfile }) {
   return (
-    <article className="mt-6 rounded border border-zinc-300 p-4 text-sm" aria-label="Relationships">
+    <Card as="article" className="mt-6 text-sm" aria-label="Relationships">
       <h2 className="font-semibold">Relationships</h2>
       {profile.relationships.length === 0 ? (
-        <p className="mt-1 text-zinc-500">No relationships found between the {profile.tables.length} table(s).</p>
+        <p className="mt-1 text-muted">No relationships found between the {profile.tables.length} table(s).</p>
       ) : (
         <ul className="mt-1 list-disc pl-5">
           {profile.relationships.map((r) => (
             <li key={`${r.from_table}.${r.from_column}>${r.to_table}`}>
               {r.from_table}.{r.from_column} → {r.to_table}.{r.to_column}{" "}
-              <span className="text-zinc-500">
+              <span className="text-muted">
                 ({r.cardinality === "one_to_one" ? "one-to-one" : "many-to-one"}, {Math.round(r.match * 100)}% of values match)
               </span>
             </li>
@@ -113,38 +110,38 @@ function Profile({ profile }: { profile: SchemaProfile }) {
         {profile.tables.map((t) => (
           <div key={t.name} className="mt-2">
             <h3 className="font-medium">
-              {t.name} <span className="font-normal text-zinc-500">({t.row_count.toLocaleString()} rows)</span>
+              {t.name} <span className="font-normal text-muted">({t.row_count.toLocaleString()} rows)</span>
             </h3>
             <ul className="pl-3 text-xs">
               {t.columns.map((c) => (
                 <li key={c.name} className="break-all">
-                  {c.name} <span className="text-zinc-500">{c.type}</span>
-                  {c.samples.length > 0 && <span className="text-zinc-500"> e.g. {c.samples.join(" | ")}</span>}
+                  {c.name} <span className="text-muted">{c.type}</span>
+                  {c.samples.length > 0 && <span className="text-muted"> e.g. {c.samples.join(" | ")}</span>}
                 </li>
               ))}
             </ul>
           </div>
         ))}
       </details>
-    </article>
+    </Card>
   );
 }
 
 function Report({ report: r }: { report: CleaningReport }) {
   return (
-    <article className="rounded border border-zinc-300 p-4 text-sm" aria-label={`Cleaning Report for ${r.table}`}>
+    <Card as="article" className="text-sm" aria-label={`Cleaning Report for ${r.table}`}>
       <h2 className="font-semibold">
-        {r.table} <span className="font-normal text-zinc-500">({r.filename})</span>
-        {r.replaced && <span className="ml-2 text-xs text-amber-600">replaced earlier Table</span>}
+        {r.table} <span className="font-normal text-muted">({r.filename})</span>
+        {r.replaced && <span className="ml-2 text-xs text-warning">replaced earlier Table</span>}
       </h2>
-      <p className="mt-1 text-zinc-500">
+      <p className="mt-1 text-muted">
         {r.rows_loaded.toLocaleString()} rows loaded of {r.rows_read.toLocaleString()} read ·{" "}
         {r.duplicates_removed.toLocaleString()} duplicate rows removed · {r.encoding} · delimiter {JSON.stringify(r.delimiter)}
       </p>
-      {r.duplicates_removed > 0 && <p className="text-xs text-zinc-500">Duplicates: {r.duplicates_basis}.</p>}
+      {r.duplicates_removed > 0 && <p className="text-xs text-muted">Duplicates: {r.duplicates_basis}.</p>}
       <table className="mt-3 w-full text-left">
         <thead>
-          <tr className="text-zinc-500">
+          <tr className="text-muted">
             <th>Column</th><th>Type</th><th>Nulls (kept)</th><th>Values trimmed</th>
           </tr>
         </thead>
@@ -154,7 +151,7 @@ function Report({ report: r }: { report: CleaningReport }) {
               <td>{c.name}</td><td>{c.type}</td>
               <td>
                 {c.nulls}
-                {c.null_tokens_converted > 0 && <span className="text-zinc-500"> ({c.null_tokens_converted} from NA/null/none-style text)</span>}
+                {c.null_tokens_converted > 0 && <span className="text-muted"> ({c.null_tokens_converted} from NA/null/none-style text)</span>}
               </td>
               <td>{c.values_trimmed}</td>
             </tr>
@@ -171,7 +168,7 @@ function Report({ report: r }: { report: CleaningReport }) {
                 {o.rule === "iqr"
                   ? `${o.count} outliers outside ${o.lower?.toFixed(2)} to ${o.upper?.toFixed(2)} (IQR)`
                   : `${o.count} non-positive values`}
-                <span className="block break-all text-xs text-zinc-500">
+                <span className="block break-all text-xs text-muted">
                   e.g. {o.samples.slice(0, 2).map((s) => JSON.stringify(s)).join(" ")}
                 </span>
               </li>
@@ -179,6 +176,6 @@ function Report({ report: r }: { report: CleaningReport }) {
           </ul>
         </div>
       )}
-    </article>
+    </Card>
   );
 }
