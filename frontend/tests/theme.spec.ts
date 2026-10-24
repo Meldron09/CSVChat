@@ -68,13 +68,15 @@ test("a stored choice beats the OS, and System clears it", async ({ page }) => {
 test("every interactive control shows a focus ring", async ({ page }) => {
   await open(page, "light");
   const seen: string[] = [];
-  for (let i = 0; i < 13; i++) {
+  for (let i = 0; i < 16; i++) {
     await page.keyboard.press("Tab");
     const ring = await page.evaluate(() => {
       const el = document.activeElement as HTMLElement;
+      if (el === document.body) return null; // tabbed past the last control
       const s = getComputedStyle(el);
       return { name: el.getAttribute("aria-label") || el.textContent?.trim() || el.outerHTML.slice(0, 80), style: s.outlineStyle, width: s.outlineWidth };
     });
+    if (!ring) break;
     expect(ring.style, `focus ring on "${ring.name}"`).not.toBe("none");
     expect(ring.width, `focus ring on "${ring.name}"`).not.toBe("0px");
     seen.push(ring.name);

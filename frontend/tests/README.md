@@ -55,3 +55,7 @@ Other: `POST /chats/{id}/sample` loads 8 tables, the sample notes and As-of Date
 
 Colours are CSS `light-dark()` tokens, so tests switch the OS with `page.emulateMedia({ colorScheme })` and assert the computed
 `body` background. The no-flash test blocks `/_next/static/**/*.js` so only the inline `<head>` script can have applied the theme.
+
+## Shell tests (`shell.spec.ts`)
+
+Layout at wide (default 1280px) and phone (`test.use({ viewport })`, 390px) widths, the sidebar drawer (a native `<dialog>`: focus trap/restore, Escape), composer keys and auto-grow, the pinned composer, and Transcript auto-scroll. The Transcript is `getByRole("region", { name: "Transcript" })`; scroll it with `el.scrollTop = ...` in `evaluate`. Use the `slow` keyword to hold a Turn in the running state. Note `getByLabel("Question")` also matches Turn articles (`aria-label="Question: ..."`) once a Turn exists: use `getByRole("textbox", { name: "Question", exact: true })`.

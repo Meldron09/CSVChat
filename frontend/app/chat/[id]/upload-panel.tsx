@@ -1,9 +1,9 @@
 "use client";
 
-import { useContext, useState } from "react";
+import { useState } from "react";
 import type { CleaningReport, SchemaProfile } from "@/lib/api";
 import { Button, Card } from "@/components/ui";
-import { SetAsOfDate } from "./chat-panel";
+import { useAsOfDate } from "./as-of-date";
 import { NotesEditor } from "./notes-editor";
 
 export function UploadPanel({
@@ -20,7 +20,7 @@ export function UploadPanel({
   const [reports, setReports] = useState(initialReports);
   const [profile, setProfile] = useState(initialProfile);
   const [notes, setNotes] = useState(initialNotes);
-  const setAsOfDate = useContext(SetAsOfDate);
+  const { setAsOfDate } = useAsOfDate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +56,7 @@ export function UploadPanel({
   const loadSample = () => send("sample");
 
   return (
-    <section className="mt-8">
+    <section className="mt-6">
       <form
         className="flex flex-col gap-3"
         onSubmit={(e) => {
