@@ -137,6 +137,13 @@ function sample(chat: Chat, res: ServerResponse) {
   json(res, 200, { reports, schema_profile: chat.schema_profile, dataset_notes: chat.dataset_notes, as_of_date: SAMPLE_AS_OF });
 }
 
+// "years": a numeric x_key, which must be drawn as "2021", not compacted to "2K".
+const YEAR_CHART: ChartSpec = {
+  type: "bar", title: "Revenue by year", x_key: "year", x_label: "Year", y_label: "Revenue (USD)",
+  series: [{ key: "revenue", label: "Revenue" }],
+  data: [{ year: 2021, revenue: 12000 }, { year: 2022, revenue: 25000 }, { year: 2023, revenue: 31000 }],
+};
+
 const busy = new Set<string>();
 
 async function messages(chat: Chat, req: IncomingMessage, res: ServerResponse) {
@@ -170,7 +177,7 @@ async function messages(chat: Chat, req: IncomingMessage, res: ServerResponse) {
       return;
     }
     if (q.includes("drop")) return; // stream closes with no terminal event
-    const wantsChart = q.includes("chart") || q.includes("malformed") || q.includes("multi");
+    const wantsChart = q.includes("chart") || q.includes("malformed") || q.includes("multi") || q.includes("years");
     if (wantsChart) await send({ event: "step", data: { node: "chart_builder", message: "Deciding whether charts are warranted" } });
     await send({ event: "step", data: { node: "synthesizer", message: "Writing the answer" } });
     const used = `(As-of Date used: ${as_of_date || SAMPLE_AS_OF})`;
@@ -181,7 +188,7 @@ async function messages(chat: Chat, req: IncomingMessage, res: ServerResponse) {
         : `Revenue grew **12%** over the period. ${used}`;
     for (const word of text.match(/\S+\s*/g) ?? []) await send({ event: "token", data: { text: word } });
     const bad = { type: "line", title: "Broken chart" } as unknown as ChartSpec; // "malformed": violates the Chart Spec
-    const charts = q.includes("malformed") ? [bad] : q.includes("multi") ? [BAR_CHART] : wantsChart ? [LINE_CHART] : [];
+    const charts = q.includes("malformed") ? [bad] : q.includes("multi") ? [BAR_CHART] : q.includes("years") ? [YEAR_CHART] : wantsChart ? [LINE_CHART] : [];
     turn.answer = text; turn.charts = charts;
     await send({ event: "answer", data: { text, as_of_date: as_of_date || SAMPLE_AS_OF, charts } });
   } finally {

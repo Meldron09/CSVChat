@@ -31,7 +31,7 @@ CSVChat is a proof of concept (a take-home assignment) that does this end to end
  Postgres 17: owner role (ingestion) | chat_<uuid> schema + role per Chat | app.chats | checkpoints (LangGraph)
 ```
 
-**Frontend** (`frontend/`, Next.js 16 App Router, TypeScript, Tailwind, Recharts). Opening `/` creates a Chat and redirects to `/chat/<id>`. The page has the upload panel (with "Load sample dataset"), the Cleaning Report and Relationships, an editable Dataset Notes box, an As-of Date field (pre-filled with the browser's today), and the transcript. It reads the SSE stream with `fetch` and shows progress steps, each SQL query as it runs, the Answer streaming in, and charts when the Answer completes.
+**Frontend** (`frontend/`, Next.js 16 App Router, TypeScript, Tailwind, Recharts, react-markdown). Opening `/` creates a Chat and redirects to `/chat/<id>`. The page has two panes. The Dataset sidebar (a drawer on narrow screens) holds the As-of Date field (pre-filled with the browser's today), the Tables list (row counts, "replaced" and "n flagged" badges; click a Table for its Cleaning Report and columns in a slide-over), a compact Relationships list, autosaving Dataset Notes, and the CSV drop zone with "Load sample dataset". The chat pane is the Transcript with a pinned composer: each Turn shows the Answer (Markdown) and its charts, with the progress steps and SQL collapsed under "How this was answered"; failed Turns offer Retry. The header has Copy chat link, New chat and a light/dark/system theme toggle. It reads the SSE stream with `fetch` and shows a live status line and the Answer streaming in. The design is in [docs/frontend-ux-redesign.md](docs/frontend-ux-redesign.md).
 
 **Backend** (`backend/`, FastAPI, Python 3.12, `uv`). Endpoints: `POST /chats`, `GET`/`PUT /chats/{id}`, `POST /chats/{id}/files`, `POST /chats/{id}/sample` (one click: loads the eight bundled Online Shop CSVs and sets the As-of Date to 2024-11-04; it fills the Dataset Notes with the Revenue definition only when the Chat has none, so notes you wrote are never overwritten), `POST /chats/{id}/messages`. No auth: anyone holding a chat id can use that Chat. One message at a time per Chat: a message sent while the Chat is still answering gets `409`.
 
@@ -190,7 +190,9 @@ Tested (automated, through the HTTP API against real Postgres with the scripted 
 - Questions: unanswerable question, question with no upload, missing As-of Date, direct replies skipping the chart path, an invalid Chart Spec (including an empty series) rejected and absent from the `answer`, a 365-point daily line chart accepted, parts dropped by the 4-sub-question cap reported in the Answer.
 - Parallelism, ordering and resume: a barrier proves sub-question analysts run concurrently; SSE ordering; transcript and Chart Specs rebuild after reload and across two app instances; the 6-turn history window; a failed turn in the transcript and the thread usable afterwards; a second message to a busy Chat getting 409 without losing a turn.
 
-Deliberately not tested: real LLM output (nondeterministic and slow; see 5.1 for how it would be) and the frontend (verified through the SSE contract and manual runs in a browser).
+Deliberately not tested: real LLM output (nondeterministic and slow; see 5.1 for how it would be).
+
+The frontend has its own Playwright end-to-end suite (`cd frontend && npm run test:e2e`; see [frontend/tests/README.md](frontend/tests/README.md)). It runs a production build against a small fake backend that implements the real endpoints, so it needs neither Postgres nor a model. An opt-in smoke test against the real compose stack and model is skipped by default (`npm run test:e2e:real`).
 
 ## 6. Known quirks of the sample data
 
@@ -217,4 +219,4 @@ The sample has no nulls, exact duplicates or orphaned keys, so cleaning is exerc
 - **Relationships are heuristic.** Irregular plurals (`people` / `person_id`) and non-unique "parent" columns are not handled; bigint columns do not link to numeric ones.
 - **Charts** are limited to line, bar, pie and scatter, at most 3 per Answer and 2,000 rows each.
 - **Isolation caveat.** `pg_catalog` is readable by every role, so table and schema names (not data) of other Chats are visible to a query.
-- **Frontend** has no automated tests and the progress steps shown live are not kept after a reload.
+- **Progress steps** shown live in the UI are not kept after a reload (a reloaded Turn keeps its SQL, grouped by task).

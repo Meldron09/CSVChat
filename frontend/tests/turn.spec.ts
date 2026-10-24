@@ -1,22 +1,10 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import { ask, loadSample, openChat, question as box, transcript } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await expect(page).toHaveURL(/\/chat\/[0-9a-f-]{36}$/);
-  // the composer is disabled until a Table is loaded
-  await page.getByRole("button", { name: "Load sample dataset" }).click();
-  await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible();
+  await openChat(page);
+  await loadSample(page); // the composer is disabled until a Table is loaded
 });
-
-const transcript = (page: Page) => page.getByRole("region", { name: "Transcript" });
-const box = (page: Page) => page.getByRole("textbox", { name: "Question", exact: true });
-
-/** Asks a question and waits until the Turn has finished (the message box is enabled again). */
-async function ask(page: Page, question: string) {
-  await box(page).fill(question);
-  await box(page).press("Enter");
-  await expect(box(page)).toBeEnabled();
-}
 
 test("a running Turn shows one status line and streaming text; the live region skips the streamed tokens", async ({ page }) => {
   await box(page).fill("slow question");
@@ -97,6 +85,28 @@ test("the As-of Date chip shows only when the date differs from the previous Tur
   await expect(page.getByRole("article", { name: "Question: second" }).getByText(/^as of/)).toHaveCount(0);
   await expect(page.getByRole("article", { name: "Question: third" }).getByText("as of 2024-12-01")).toBeVisible();
   await expect(page.getByRole("article", { name: "Question: fourth" }).getByText(/^as of/)).toHaveCount(0);
+});
+
+test("a blank As-of Date never shows a chip, and a later dated Turn does", async ({ page }) => {
+  const date = page.getByLabel("As-of Date");
+  await date.fill("2024-11-04");
+  await ask(page, "first");
+  await date.clear();
+  await ask(page, "second");
+  await ask(page, "third");
+  await date.fill("2024-11-04"); // differs from the previous Turn's blank date: chip again
+  await ask(page, "fourth");
+  const check = async () => {
+    const t = transcript(page);
+    await expect(page.getByRole("article")).toHaveCount(4);
+    await expect(t.getByText(/^as of /)).toHaveText(["as of 2024-11-04", "as of 2024-11-04"]); // never "as of " or "as of null"
+    await expect(page.getByRole("article", { name: "Question: second" }).getByText(/^as of/)).toHaveCount(0);
+    await expect(page.getByRole("article", { name: "Question: third" }).getByText(/^as of/)).toHaveCount(0);
+    await expect(page.getByRole("article", { name: "Question: fourth" }).getByText("as of 2024-11-04")).toBeVisible();
+  };
+  await check();
+  await page.reload(); // saved Turns follow the same rule
+  await check();
 });
 
 test("renders Markdown: bold, lists and GFM tables, but never raw HTML", async ({ page }) => {

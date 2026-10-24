@@ -1,21 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
+import { csv, loadSample, openChat, orders, tables } from "./helpers";
 
 // The Tables list, compact Relationships list and the Table slide-over. The sample dataset has 8 Tables; `orders`
 // (97 rows after 3 duplicate rows) has an IQR outlier flag, so it shows "2 flagged".
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await expect(page).toHaveURL(/\/chat\/[0-9a-f-]{36}$/);
-});
+test.beforeEach(({ page }) => openChat(page));
 
-const tables = (page: Page) => page.getByRole("region", { name: "Tables" });
-const orders = (page: Page) => tables(page).getByRole("button", { name: /^orders\b/ });
 const slideOver = (page: Page) => page.getByRole("dialog", { name: "Table orders" });
-const csv = (name: string, body: string) => ({ name, mimeType: "text/csv", buffer: Buffer.from(body) });
-
-async function loadSample(page: Page) {
-  await page.getByRole("button", { name: "Load sample dataset" }).click();
-  await expect(orders(page)).toBeVisible();
-}
 
 test("lists Tables with row counts and a flagged badge only where there is something flagged", async ({ page }) => {
   await expect(tables(page)).toContainText("No Tables yet");

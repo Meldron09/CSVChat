@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, type ReactNode } from "react";
+import { errorMessage } from "@/lib/errors";
 import type { CleaningReport, SchemaProfile } from "@/lib/api";
 import { useAsOfDate } from "./as-of-date";
 
@@ -16,7 +17,11 @@ type Dataset = {
   loadSample: () => void;
   /** At least one Table exists: the composer is enabled. */
   hasTables: boolean;
-  /** Turns in the Chat, reported by the chat pane (the Dataset summary shows only while there are none). */
+  /**
+   * Turns in the Chat, reported by the chat pane. A deliberate mirror: the chat pane owns the Turns, while the sidebar-side
+   * consumers (Composer's Dataset summary, header New chat guard) only need the count. Lifting Turns into this context would
+   * re-render the whole sidebar on every streamed token.
+   */
   turnCount: number;
   setTurnCount: (n: number) => void;
 };
@@ -76,7 +81,7 @@ export function DatasetProvider({
         setAsOfDate(json.as_of_date);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setProcessing(null);
     }

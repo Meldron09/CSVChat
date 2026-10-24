@@ -45,8 +45,8 @@ export function Transcript({ turns, onRetry, busy }: { turns: Turn[]; onRetry: (
     >
       <div ref={content} className="mx-auto flex max-w-3xl flex-col gap-6 p-4">
         {turns.map((t, i) => (
-          // The As-of Date chip shows only when the date differs from the previous Turn's (the first Turn always shows it).
-          <TurnView key={t.id} turn={t} showAsOf={t.asOfDate !== turns[i - 1]?.asOfDate} onRetry={() => onRetry(t.question)} retryDisabled={busy} />
+          // The As-of Date chip shows only when the date differs from the previous Turn's (the first Turn always shows it); a blank date never shows one.
+          <TurnView key={t.id} turn={t} showAsOf={(t.asOfDate ?? "") !== (turns[i - 1]?.asOfDate ?? "")} onRetry={() => onRetry(t.question)} retryDisabled={busy} />
         ))}
       </div>
     </section>

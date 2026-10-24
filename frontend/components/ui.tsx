@@ -31,3 +31,9 @@ export function Input({ className, ...props }: ComponentProps<"input">) {
 export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
   return <textarea {...props} className={cx(control, "p-2 text-sm", className)} />;
 }
+
+/** A small bordered label; `warning` for something the user should look at. */
+export function Badge({ tone = "neutral", className, ...props }: ComponentProps<"span"> & { tone?: "neutral" | "warning" }) {
+  const tones = { neutral: "border-border-strong text-muted", warning: "border-warning text-warning" };
+  return <span {...props} className={cx("shrink-0 rounded-control border px-1.5 text-xs", tones[tone], className)} />;
+}

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Textarea } from "@/components/ui";
+import { errorMessage } from "@/lib/errors";
 
 type Status = "saving" | "saved" | { failed: string } | null;
 
@@ -33,7 +34,7 @@ export function NotesEditor({
       dirty.current = false;
       setStatus("saved");
     } catch (e) {
-      setStatus({ failed: e instanceof Error ? e.message : String(e) });
+      setStatus({ failed: errorMessage(e) });
     }
   }
 

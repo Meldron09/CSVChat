@@ -1,9 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
+import { FAKE_PORT } from "./tests/helpers";
 
 // Ports are deliberately not 3000/8000 (the compose stack) and nothing is ever reused:
 // attaching to a running stack would hit the real backend and model.
 const FRONTEND_PORT = Number(process.env.E2E_FRONTEND_PORT ?? 3100);
-const FAKE_PORT = Number(process.env.FAKE_BACKEND_PORT ?? 4010);
 // BACKEND_URL set = test against that backend instead of the fake (e.g. the real compose stack).
 const EXTERNAL_BACKEND = process.env.BACKEND_URL;
 const BACKEND_URL = EXTERNAL_BACKEND ?? `http://127.0.0.1:${FAKE_PORT}`;

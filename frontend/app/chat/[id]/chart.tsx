@@ -27,7 +27,7 @@ const compact = new Intl.NumberFormat(undefined, { notation: "compact", maximumF
 const full = new Intl.NumberFormat(undefined, { maximumFractionDigits: 6 });
 const axisFmt = (v: unknown) => (typeof v === "number" ? compact.format(v) : String(v));
 const tipFmt = (v: unknown) => (typeof v === "number" ? full.format(v) : String(v));
-const axisProps = { tick: { fill: "var(--muted)", fontSize: 12 }, stroke: "var(--border)", tickFormatter: axisFmt };
+const axisProps = { tick: { fill: "var(--muted)", fontSize: 12 }, stroke: "var(--border)" };
 const labelStyle = { fill: "var(--muted)", fontSize: 12, textAnchor: "middle" } as const;
 const grid = <CartesianGrid stroke="var(--border)" strokeOpacity={0.5} vertical={false} />;
 const tooltip = (extra?: object) => (
@@ -61,7 +61,8 @@ function Plot({ spec }: { spec: ChartSpec }) {
   const xAxis = (extra?: object) => (
     <XAxis dataKey={x_key} label={{ value: x_label, position: "insideBottom", offset: -8, style: labelStyle }} height={50} {...axisProps} {...extra} />
   );
-  const yAxis = (extra?: object) => <YAxis label={{ value: y_label, angle: -90, position: "insideLeft", style: labelStyle }} width={70} {...axisProps} {...extra} />;
+  // Only value (Y) axes are compact; X labels render as-is (a numeric x_key such as a year must stay "2023").
+  const yAxis = (extra?: object) => <YAxis label={{ value: y_label, angle: -90, position: "insideLeft", style: labelStyle }} width={70} tickFormatter={axisFmt} {...axisProps} {...extra} />;
   const common = { data, margin: { top: 8, right: 16, bottom: 8, left: 8 } };
 
   if (type === "pie") {

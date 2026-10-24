@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ChatEvent } from "@/lib/api";
+import { errorMessage } from "@/lib/errors";
 import { readSse } from "@/lib/sse";
 import { useAsOfDate } from "./as-of-date";
 import { Composer } from "./composer";
@@ -45,7 +46,7 @@ export function ChatPane({ chatId, initialTurns }: { chatId: string; initialTurn
       for await (const frame of readSse(res.body)) apply(id, frame as ChatEvent);
       update(id, (t) => (t.status === "running" ? { status: "error", error: "The connection closed before the answer finished." } : {}));
     } catch (e) {
-      update(id, () => ({ status: "error", error: e instanceof Error ? e.message : String(e) }));
+      update(id, () => ({ status: "error", error: errorMessage(e) }));
     }
   }
 

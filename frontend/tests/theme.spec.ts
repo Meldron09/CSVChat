@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { openChat } from "./helpers";
 
 const LIGHT_BG = "rgb(255, 255, 255)";
 const DARK_BG = "rgb(10, 10, 10)";
@@ -7,8 +8,7 @@ const html = (page: Page) => page.locator("html");
 const background = (page: Page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 const open = async (page: Page, os: "light" | "dark") => {
   await page.emulateMedia({ colorScheme: os });
-  await page.goto("/");
-  await expect(page).toHaveURL(/\/chat\/[0-9a-f-]{36}$/);
+  await openChat(page);
 };
 const theme = (page: Page, name: string) => page.getByRole("group", { name: "Theme" }).getByRole("button", { name });
 

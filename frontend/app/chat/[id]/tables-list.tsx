@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { CleaningReport, SchemaProfile } from "@/lib/api";
-import { Card } from "@/components/ui";
+import { Badge, Card } from "@/components/ui";
 import { TableSlideOver } from "./table-slide-over";
 
 /** What the "n flagged" badge counts: each flagged-not-removed outlier rule, plus one if duplicate rows were removed. */
@@ -36,8 +36,8 @@ export function TablesList({ reports, profile }: { reports: CleaningReport[]; pr
                   >
                     <span className="min-w-0 flex-1 break-all font-medium">{r.table}</span>
                     <span className="shrink-0 text-muted">{r.rows_loaded.toLocaleString()} rows</span>
-                    {r.replaced && <span className="shrink-0 rounded-control border border-border-strong px-1.5 text-xs text-muted">replaced</span>}
-                    {n > 0 && <span className="shrink-0 rounded-control border border-warning px-1.5 text-xs text-warning">{n} flagged</span>}
+                    {r.replaced && <Badge>replaced</Badge>}
+                    {n > 0 && <Badge tone="warning">{n} flagged</Badge>}
                   </button>
                 </li>
               );

@@ -14,7 +14,7 @@ npm run test:e2e                  # starts fake backend + frontend, runs the sui
 ```
 
 Ports: frontend `3100` (`E2E_FRONTEND_PORT`), fake backend `4010` (`FAKE_BACKEND_PORT`). They avoid 3000/8000 on purpose and
-servers are never reused, so a running compose stack is never touched. Report: `npx playwright show-report`.
+servers are never reused, so a running compose stack is never touched. Report: `npx playwright show-report`. Specs share their helpers (locators, `csv`, `loadSample`, `ask`, `openChat`, the fake backend URL) from `tests/helpers.ts`.
 
 Against another backend (e.g. the real compose stack): `BACKEND_URL=http://localhost:8000 npm run test:e2e` skips the fake
 and points the frontend at that URL (only suitable for tests written for a real backend).
@@ -22,7 +22,7 @@ and points the frontend at that URL (only suitable for tests written for a real 
 ## Real-stack smoke test
 
 `real-stack.spec.ts` loads the sample dataset and asks one question against the real backend and language model, expecting
-an Answer. It is skipped (reported as skipped, not failed) unless `E2E_REAL_STACK=1`, so `npm run test:e2e` never calls the
+a finished Turn with an Answer. It is skipped (reported as skipped, not failed) unless `E2E_REAL_STACK=1`, so `npm run test:e2e` never calls the
 model. To run it, start the stack (`docker compose up --build` from the repo root; the model, Ollama by default, must be
 reachable) and then:
 
@@ -33,13 +33,13 @@ BACKEND_URL=http://localhost:9000 npm run test:e2e:real   # another address
 ```
 
 It sets `E2E_REAL_STACK=1` and `BACKEND_URL`, runs only this spec, and still starts its own frontend on 3100. It creates a
-real Chat in the stack's database and can take minutes (timeout 5 min); the Answer is recognised by the backend's closing
-"(As-of Date used: ...)" line, not by the model's wording.
+real Chat in the stack's database and can take minutes (timeout 5 min); it passes when the Turn finishes with a non-empty Answer and no "This question failed" text (the wording is up to the model; the backend
+only appends its "(As-of Date used: ...)" line when the Answer does not already mention the date, so that is not relied on).
 
 ## Writing tests
 
 Open `/` in `beforeEach`; each visit creates a fresh Chat in the fake, so tests are independent. Assert only on what a user
-sees. `GET http://127.0.0.1:4010/__test/calls` returns every `METHOD /path` the fake has served (e.g. to count `POST /chats`).
+sees. `GET ${FAKE_URL}/__test/calls` (port 4010 by default) returns every `METHOD /path` the fake has served (e.g. to count `POST /chats`).
 The fake keeps state per Chat and records finished Turns, so reloading shows the Transcript like the real backend.
 Tests can read what was saved with `GET http://127.0.0.1:${FAKE_BACKEND_PORT}/chats/{id}` (e.g. `as_of_date`, `dataset_notes`); a question's Answer echoes the As-of Date it was sent.
 
@@ -56,6 +56,7 @@ Markdown-ish Answer ending "(As-of Date used: ...)", no Chart.
 |---|---|
 | `chart` | Answer includes a line Chart titled "Monthly revenue" |
 | `multi` | Answer includes a two-series bar Chart "Revenue by region" with large values (12400 ... 1234567) |
+| `years` | Answer includes a one-series bar Chart "Revenue by year" whose x values are the numbers 2021 to 2023 (X labels must not be compacted) |
 | `malformed` | Answer includes an invalid Chart Spec (renders the malformed-chart notice) |
 | `markdown` | Answer with bold, a list, a GFM table and a raw `<b>` tag (which must show as text, not render) |
 | `plain` | Plain-text Answer with single newlines and no Markdown syntax |

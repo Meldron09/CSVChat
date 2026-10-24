@@ -9,7 +9,7 @@ export type Step = { message: string; task?: number }; // task: 0-based parallel
 export type Turn = {
   id: number;
   question: string;
-  asOfDate: string;
+  asOfDate: string | null; // null/blank: the Chat had no As-of Date when asked
   steps: Step[]; // progress messages in arrival order
   queries: { task: number; subQuestion: string; sql: string }[];
   charts?: ChartSpec[]; // Chart Specs, only from the final answer event
@@ -62,7 +62,7 @@ export function TurnView({ turn, showAsOf, onRetry, retryDisabled }: { turn: Tur
     <article className="flex flex-col gap-3 text-sm" aria-label={`Question: ${turn.question}`}>
       <p className="self-end rounded-card bg-accent px-3 py-2 text-accent-foreground">
         {turn.question}
-        {showAsOf && <span className="ml-2 rounded-full border border-current px-2 text-xs opacity-80">as of {turn.asOfDate}</span>}
+        {showAsOf && turn.asOfDate && <span className="ml-2 rounded-full border border-current px-2 text-xs opacity-80">as of {turn.asOfDate}</span>}
       </p>
       {running ? (
         <>

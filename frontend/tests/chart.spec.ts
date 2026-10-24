@@ -1,10 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
+import { loadSample, openChat, question } from "./helpers";
 
-const ask = async (page: Page, question: string) => {
-  await page.goto("/");
-  await expect(page).toHaveURL(/\/chat\/[0-9a-f-]{36}$/);
-  await page.getByRole("button", { name: "Load sample dataset" }).click();
-  await page.getByRole("textbox", { name: "Question" }).fill(question);
+const ask = async (page: Page, text: string) => {
+  await openChat(page);
+  await loadSample(page);
+  await question(page).fill(text);
   await page.getByRole("button", { name: "Ask" }).click();
   await expect(page.getByText("Revenue grew")).toBeVisible();
 };
@@ -37,10 +37,17 @@ test("axes and tooltips use compact numbers, tooltips with locale separators", a
   await expect(chart.locator(".recharts-tooltip-wrapper")).toContainText("1,234,567");
 });
 
+test("a numeric X value such as a year is shown as-is, not compacted", async ({ page }) => {
+  await ask(page, "revenue by years");
+  const chart = page.getByLabel("Chart: Revenue by year");
+  await expect(chart.locator(TICK)).toHaveText(["2021", "2022", "2023"]);
+  await expect(chart.locator(".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value").filter({ hasText: /^\d+K$/ }).first()).toBeVisible(); // value axis stays compact
+});
+
 test("the legend appears only for more than one series", async ({ page }) => {
   await ask(page, "multi series chart");
   await expect(page.getByLabel("Chart: Revenue by region").locator(".recharts-legend-wrapper")).toContainText("Cost");
-  await page.getByRole("textbox", { name: "Question" }).fill("Show monthly revenue as a chart");
+  await question(page).fill("Show monthly revenue as a chart");
   await page.getByRole("button", { name: "Ask" }).click();
   const single = page.getByLabel("Chart: Monthly revenue");
   await expect(single.locator(".recharts-line")).toBeVisible();

@@ -1,15 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
+import { csv, openChat, question, tables } from "./helpers";
 
 // First run: the empty Chat, uploading (chooser and drag-and-drop), upload feedback, rejection, replacement, sample, Dataset summary.
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await expect(page).toHaveURL(/\/chat\/[0-9a-f-]{36}$/);
-});
+test.beforeEach(({ page }) => openChat(page));
 
-const csv = (name: string, body: string) => ({ name, mimeType: "text/csv", buffer: Buffer.from(body) });
-const tables = (page: Page) => page.getByRole("region", { name: "Tables" });
 const table = (page: Page, name: string) => tables(page).getByRole("button", { name: new RegExp(`^${name}\\b`) });
-const question = (page: Page) => page.getByRole("textbox", { name: "Question", exact: true });
 const summary = (page: Page) => page.getByText(/ tables? · .* rows? · .* relationships?$/);
 
 test("an empty Chat shows the drop zone, the sample option and a disabled composer with a hint", async ({ page }) => {

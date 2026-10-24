@@ -1,25 +1,21 @@
 import { test, expect, type Page } from "@playwright/test";
+import { FAKE_URL, ask as askQuestion, openChat, question, transcript } from "./helpers";
 
 // The two-pane shell: layout at wide and phone widths, the pinned composer, scrolling, and the sidebar drawer.
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await expect(page).toHaveURL(/\/chat\/[0-9a-f-]{36}$/);
+  await openChat(page);
   // the message box is disabled until a Table exists: give the fake Chat the sample dataset, then reload
   const id = new URL(page.url()).pathname.split("/").pop();
-  await fetch(`http://127.0.0.1:${process.env.FAKE_BACKEND_PORT ?? 4010}/chats/${id}/sample`, { method: "POST" });
+  await fetch(`${FAKE_URL}/chats/${id}/sample`, { method: "POST" });
   await page.reload();
 });
 
-const question = (page: Page) => page.getByRole("textbox", { name: "Question", exact: true });
-const transcript = (page: Page) => page.getByRole("region", { name: "Transcript" });
 const scrollInfo = (page: Page) =>
   transcript(page).evaluate((el) => ({ top: el.scrollTop, gap: el.scrollHeight - el.scrollTop - el.clientHeight, scrollable: el.scrollHeight > el.clientHeight }));
 
 async function ask(page: Page, text: string) {
-  await question(page).fill(text);
-  await question(page).press("Enter");
+  await askQuestion(page, text); // the Turn is done
   await expect(page.getByText("Revenue grew").last()).toBeVisible();
-  await expect(question(page)).toBeEnabled(); // the Turn is done
 }
 
 test.describe("wide screen", () => {

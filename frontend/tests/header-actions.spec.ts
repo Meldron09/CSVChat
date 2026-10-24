@@ -1,10 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
+import { CHAT_URL, ask, loadSample, openChat } from "./helpers";
 
 // Header actions: Copy chat link and New chat (with its guard). Opening `/` creates a Chat, so these tests also
 // watch that nothing but an explicit New chat ever requests it.
 test.use({ permissions: ["clipboard-read", "clipboard-write"] });
 
-const chatUrl = /\/chat\/[0-9a-f-]{36}$/;
 const header = (page: Page) => page.getByRole("banner");
 const newChat = (page: Page) => header(page).getByRole("link", { name: "New chat" });
 const confirm = (page: Page) => page.getByRole("dialog", { name: "Start a new chat?" });
@@ -17,10 +17,7 @@ function watchRootRequests(page: Page) {
   return hits;
 }
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await expect(page).toHaveURL(chatUrl);
-});
+test.beforeEach(({ page }) => openChat(page));
 
 test("Copy chat link puts the Chat URL on the clipboard and confirms it", async ({ page }) => {
   await header(page).getByRole("button", { name: "Copy chat link" }).click();
@@ -31,15 +28,14 @@ test("Copy chat link puts the Chat URL on the clipboard and confirms it", async 
 test("New chat on an empty Chat navigates without a confirmation", async ({ page }) => {
   const first = page.url();
   await newChat(page).click();
-  await expect(page).toHaveURL(chatUrl);
+  await expect(page).toHaveURL(CHAT_URL);
   expect(page.url()).not.toBe(first);
   await expect(confirm(page)).toBeHidden();
 });
 
 test.describe("a Chat with Tables", () => {
   test.beforeEach(async ({ page }) => {
-    await page.getByRole("button", { name: "Load sample dataset" }).click();
-    await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible(); // no reload: the header learns it live
+    await loadSample(page); // no reload: the header learns it live
     await newChat(page).click();
     await expect(confirm(page)).toBeVisible();
   });
@@ -54,7 +50,7 @@ test.describe("a Chat with Tables", () => {
   test("New chat goes to a new Chat", async ({ page }) => {
     const first = page.url();
     await confirm(page).getByRole("link", { name: "New chat" }).click();
-    await expect(page).toHaveURL(chatUrl);
+    await expect(page).toHaveURL(CHAT_URL);
     expect(page.url()).not.toBe(first);
     await expect(page.getByRole("button", { name: "Load sample dataset" })).toBeVisible(); // empty again
   });
@@ -81,19 +77,15 @@ test.describe("a Chat with Tables", () => {
 
 test("New chat on a Chat with a Turn asks for confirmation", async ({ page }) => {
   // the composer is disabled until a Table is loaded, so a Chat with Turns always has Tables too
-  await page.getByRole("button", { name: "Load sample dataset" }).click();
-  await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible();
-  const q = page.getByRole("textbox", { name: "Question", exact: true });
-  await q.fill("How is revenue?");
-  await q.press("Enter");
+  await loadSample(page);
+  await ask(page, "How is revenue?");
   await expect(page.getByText("Revenue grew").last()).toBeVisible();
   await newChat(page).click();
   await expect(confirm(page)).toBeVisible();
 });
 
 test("a saved Chat with Tables asks for confirmation straight after loading", async ({ page }) => {
-  await page.getByRole("button", { name: "Load sample dataset" }).click();
-  await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible();
+  await loadSample(page);
   await page.reload();
   await newChat(page).click();
   await expect(confirm(page)).toBeVisible();
@@ -101,8 +93,7 @@ test("a saved Chat with Tables asks for confirmation straight after loading", as
 
 test("loading a Chat page or hovering New chat never requests the root address", async ({ page }) => {
   const root = watchRootRequests(page); // created after the beforeEach navigation, so only later requests count
-  await page.getByRole("button", { name: "Load sample dataset" }).click();
-  await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible();
+  await loadSample(page);
   await page.reload();
   await page.waitForLoadState("networkidle");
   await newChat(page).hover();

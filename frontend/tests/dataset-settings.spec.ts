@@ -1,16 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
+import { FAKE_URL, openChat, question } from "./helpers";
 
-const FAKE = `http://127.0.0.1:${process.env.FAKE_BACKEND_PORT ?? 4010}`;
-
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await expect(page).toHaveURL(/\/chat\/[0-9a-f-]{36}$/);
-});
+test.beforeEach(({ page }) => openChat(page));
 
 /** What the fake backend has saved for this Chat (the fake exposes the real GET /chats/{id}). */
 async function saved(page: Page) {
   const id = new URL(page.url()).pathname.split("/").pop();
-  return (await (await fetch(`${FAKE}/chats/${id}`)).json()) as { as_of_date: string | null; dataset_notes: string | null };
+  return (await (await fetch(`${FAKE_URL}/chats/${id}`)).json()) as { as_of_date: string | null; dataset_notes: string | null };
 }
 
 const dateField = (page: Page) => page.getByLabel("As-of Date");
@@ -37,7 +33,7 @@ test("editing the As-of Date updates the composer label, is saved, and is sent w
   await expect.poll(async () => (await saved(page)).as_of_date).toBe("2024-03-15");
 
   await addData(page);
-  await page.getByRole("textbox", { name: "Question" }).fill("How many orders?");
+  await question(page).fill("How many orders?");
   await page.getByRole("button", { name: "Ask" }).click();
   await expect(page.getByText("(As-of Date used: 2024-03-15)")).toBeVisible(); // the fake echoes the date it was sent
 
@@ -55,7 +51,7 @@ test("a blank As-of Date is allowed", async ({ page }) => {
   await expect.poll(async () => (await saved(page)).as_of_date).toBeNull();
 
   await addData(page);
-  await page.getByRole("textbox", { name: "Question" }).fill("hello");
+  await question(page).fill("hello");
   await page.getByRole("button", { name: "Ask" }).click(); // still allowed to ask
   await expect(page.getByRole("button", { name: "Ask" })).toBeVisible();
   await expect(page.getByText("This question failed")).toHaveCount(0);
