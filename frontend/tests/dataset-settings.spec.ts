@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { FAKE_URL, openChat, question } from "./helpers";
+import { FAKE_URL, openChat, question, tables } from "./helpers";
 
 test.beforeEach(({ page }) => openChat(page));
 
@@ -14,7 +14,7 @@ const notes = (page: Page) => page.getByLabel("Business definitions");
 /** The message box stays disabled until a Table exists: upload a tiny CSV (the sample would also set the As-of Date). */
 async function addData(page: Page) {
   await page.getByLabel("CSV files").setInputFiles({ name: "t.csv", mimeType: "text/csv", buffer: Buffer.from("id\n1\n") });
-  await expect(page.getByRole("button", { name: /^t\b/ })).toBeVisible();
+  await expect(tables(page).getByRole("button", { name: /^t\b/ })).toBeVisible();
 }
 
 test("As-of Date defaults to the browser's local today and shows in the composer", async ({ page }) => {

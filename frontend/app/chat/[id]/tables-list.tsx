@@ -1,15 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { CleaningReport, SchemaProfile } from "@/lib/api";
+import { flaggedCount, type CleaningReport, type SchemaProfile } from "@/lib/api";
 import { Badge, Card } from "@/components/ui";
 import { TableSlideOver } from "./table-slide-over";
 
-/** What the "n flagged" badge counts: each flagged-not-removed outlier rule, plus one if duplicate rows were removed. */
-const flaggedCount = (r: CleaningReport) => r.outliers.length + (r.duplicates_removed > 0 ? 1 : 0);
-
 /**
- * The Dataset sidebar's Tables: one row per Table (name, row count, "n flagged" badge) and a compact Relationships list.
+ * The Dataset sidebar's Tables: one row per Table (name, row count, "n flagged" badge). Relationships are in the main pane's schema graph.
  * Clicking a Table opens its slide-over (full Cleaning Report and Schema Profile columns).
  */
 export function TablesList({ reports, profile }: { reports: CleaningReport[]; profile: SchemaProfile | null }) {
@@ -23,7 +20,7 @@ export function TablesList({ reports, profile }: { reports: CleaningReport[]; pr
           <h2 className="font-semibold">Tables</h2>
           {reports.length > 0 && <span className="text-muted">{reports.reduce((n, r) => n + r.rows_loaded, 0).toLocaleString()} rows</span>}
         </div>
-        <Card className="p-2">
+        <Card pad="p-2">
           {reports.length === 0 ? (
             <p className="px-2 py-1 text-muted">No Tables yet. Upload CSV files or load the sample dataset.</p>
           ) : (
@@ -53,23 +50,6 @@ export function TablesList({ reports, profile }: { reports: CleaningReport[]; pr
           )}
         </Card>
       </section>
-      {profile && (
-        <Card as="section" className="text-sm" aria-label="Relationships">
-          <h2 className="font-semibold">Relationships</h2>
-          {profile.relationships.length === 0 ? (
-            <p className="mt-1 text-muted">No relationships found between the {profile.tables.length} table(s).</p>
-          ) : (
-            <ul className="mt-1 list-disc pl-5">
-              {profile.relationships.map((r) => (
-                <li key={`${r.from_table}.${r.from_column}>${r.to_table}`} className="break-all">
-                  {r.from_table}.{r.from_column} → {r.to_table}.{r.to_column}{" "}
-                  <span className="text-muted">({r.cardinality === "one_to_one" ? "one-to-one" : "many-to-one"})</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      )}
       {open && <TableSlideOver report={open} profileTable={profile?.tables.find((t) => t.name === open.table)} onClose={() => setOpenTable(null)} />}
     </>
   );

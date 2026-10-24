@@ -6,6 +6,7 @@ import { errorMessage } from "@/lib/errors";
 import { readSse } from "@/lib/sse";
 import { useAsOfDate } from "./as-of-date";
 import { Composer } from "./composer";
+import { EmptyState } from "./empty-state";
 import { useDataset } from "./dataset-context";
 import { Transcript } from "./transcript";
 import type { Turn } from "./turn";
@@ -16,7 +17,7 @@ export function ChatPane({ chatId, initialTurns }: { chatId: string; initialTurn
   const [turns, setTurns] = useState<Turn[]>(initialTurns); // the saved transcript; new turns append
   const busy = turns.some((t) => t.status === "running");
   const { setTurnCount } = useDataset();
-  useEffect(() => setTurnCount(turns.length), [turns.length, setTurnCount]); // the Composer shows the Dataset summary while there are none
+  useEffect(() => setTurnCount(turns.length), [turns.length, setTurnCount]); // the header's New chat guard needs it
 
   const update = (id: number, change: (t: Turn) => Partial<Turn>) =>
     setTurns((all) => all.map((t) => (t.id === id ? { ...t, ...change(t) } : t)));
@@ -52,7 +53,8 @@ export function ChatPane({ chatId, initialTurns }: { chatId: string; initialTurn
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      <Transcript turns={turns} onRetry={ask} busy={busy} />
+      {turns.length > 0 && <h1 className="sr-only">CSVChat conversation</h1> /* before the first Turn, the EmptyState's h1 */}
+      <Transcript turns={turns} onRetry={ask} busy={busy} empty={<EmptyState onAsk={ask} busy={busy} />} />
       <Composer busy={busy} onSend={ask} />
     </div>
   );

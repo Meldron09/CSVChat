@@ -5,16 +5,14 @@ import { Button, Textarea } from "@/components/ui";
 import { useAsOfDate } from "./as-of-date";
 import { useDataset } from "./dataset-context";
 
-const count = (n: number, noun: string) => `${n.toLocaleString()} ${noun}${n === 1 ? "" : "s"}`;
-
 /**
  * The message box, pinned under the Transcript: Enter sends, Shift+Enter adds a newline, grows with its text, disabled while `busy`
- * or until a Table exists (with a hint). While data is loaded and there are no Turns, a one-line Dataset summary shows above it.
+ * or until a Table exists (with a hint).
  */
 export function Composer({ busy, onSend }: { busy: boolean; onSend: (question: string) => void }) {
   const [question, setQuestion] = useState("");
   const { asOfDate } = useAsOfDate();
-  const { profile, hasTables, turnCount } = useDataset();
+  const { hasTables } = useDataset();
   const box = useRef<HTMLTextAreaElement>(null);
   const hadFocus = useRef(false);
 
@@ -47,13 +45,7 @@ export function Composer({ busy, onSend }: { busy: boolean; onSend: (question: s
         send();
       }}
     >
-      {profile && hasTables && turnCount === 0 && (
-        <p className="mx-auto mb-2 max-w-3xl text-sm text-muted">
-          {count(profile.tables.length, "table")} · {count(profile.tables.reduce((n, t) => n + t.row_count, 0), "row")} ·{" "}
-          {count(profile.relationships.length, "relationship")}
-        </p>
-      )}
-      <div className="mx-auto flex max-w-3xl items-end gap-2">
+      <div className="mx-auto flex max-w-4xl items-end gap-2">
         <Textarea
           ref={box}
           rows={1}
@@ -76,11 +68,11 @@ export function Composer({ busy, onSend }: { busy: boolean; onSend: (question: s
         </Button>
       </div>
       {!hasTables && (
-        <p id="composer-hint" className="mx-auto mt-1 max-w-3xl text-xs text-muted">
-          Add data to start asking: drop CSV files or load the sample dataset in the Dataset panel.
+        <p id="composer-hint" className="mx-auto mt-1 max-w-4xl text-xs text-muted">
+          Add data to start asking: drop CSV files above or load the sample dataset.
         </p>
       )}
-      <p className="mx-auto mt-1 max-w-3xl text-xs text-muted">{asOfDate ? `as of ${asOfDate}` : "no as-of date"}</p>
+      <p className="mx-auto mt-1 max-w-4xl text-xs text-muted">{asOfDate ? `as of ${asOfDate}` : "no as-of date"}</p>
     </form>
   );
 }

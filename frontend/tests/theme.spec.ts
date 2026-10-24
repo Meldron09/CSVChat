@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { openChat } from "./helpers";
+import { openChat, orders } from "./helpers";
 
 const LIGHT_BG = "rgb(255, 255, 255)";
 const DARK_BG = "rgb(22, 11, 38)";
@@ -69,7 +69,7 @@ test("a stored choice beats the OS", async ({ page }) => {
 test("every interactive control shows a focus ring", async ({ page }) => {
   await open(page, "light");
   await page.getByRole("button", { name: "Load sample dataset" }).click();
-  await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible(); // the message box is disabled until a Table exists
+  await expect(orders(page)).toBeVisible(); // the message box is disabled until a Table exists
   await page.reload();
   const seen: string[] = [];
   for (let i = 0; i < 40; i++) {

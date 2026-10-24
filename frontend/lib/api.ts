@@ -27,6 +27,9 @@ export type CleaningReport = {
   outliers: OutlierFlag[];
 };
 
+/** What a Table's "n flagged" counts (Tables list, schema graph, "Worth a look"): each flagged-not-removed outlier rule, plus one if duplicate rows were removed. */
+export const flaggedCount = (r: CleaningReport) => r.outliers.length + (r.duplicates_removed > 0 ? 1 : 0);
+
 export type Relationship = {
   from_table: string;
   from_column: string;

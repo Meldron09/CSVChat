@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { csv, loadSample, openChat, orders, tables } from "./helpers";
 
-// The Tables list, compact Relationships list and the Table slide-over. The sample dataset has 8 Tables; `orders`
+// The Tables list, the schema graph's Relationships text list and the Table slide-over. The sample dataset has 8 Tables; `orders`
 // (97 rows after 3 duplicate rows) has an IQR outlier flag, so it shows "2 flagged".
 test.beforeEach(({ page }) => openChat(page));
 
@@ -22,11 +22,11 @@ test("counts removed duplicate rows as flagged", async ({ page }) => {
   await expect(tables(page).getByRole("button", { name: /^dupes\b/ })).toContainText("1 flagged");
 });
 
-test("shows a compact Relationships list, or an empty message", async ({ page }) => {
+test("lists the Relationships (the schema graph's text alternative), or an empty message", async ({ page }) => {
   await page.getByLabel("CSV files").setInputFiles(csv("good.csv", "id,name\n1,a\n2,b\n"));
-  await expect(page.getByRole("region", { name: "Relationships" })).toContainText("No relationships found between the 1 table(s).");
+  await expect(page.getByRole("list", { name: "Relationships" })).toContainText("No relationships found.");
   await loadSample(page);
-  await expect(page.getByRole("region", { name: "Relationships" })).toContainText("orders.customer_id → customers.id");
+  await expect(page.getByRole("list", { name: "Relationships" })).toContainText("orders.customer_id to customers.id, many to one");
 });
 
 test("opens a Table's Cleaning Report and columns, and closes it", async ({ page }) => {
@@ -87,8 +87,9 @@ test.describe("phone width", () => {
   test.use({ viewport: { width: 390, height: 700 } });
 
   test("opens as a full-screen sheet from the drawer and returns focus to the Table", async ({ page }) => {
+    await page.getByRole("button", { name: "Load sample dataset" }).click(); // with no Tables it is in the main pane, not the drawer
+    await expect(page.getByRole("heading", { name: "How your tables connect" })).toBeVisible();
     await page.getByRole("button", { name: "Dataset", exact: true }).click();
-    await loadSample(page);
     await orders(page).click();
     await expect(slideOver(page)).toBeVisible();
     expect(await slideOver(page).boundingBox()).toEqual({ x: 0, y: 0, width: 390, height: 700 });

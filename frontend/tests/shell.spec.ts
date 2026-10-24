@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { FAKE_URL, ask as askQuestion, openChat, question, transcript } from "./helpers";
+import { FAKE_URL, ask as askQuestion, openChat, orders, question, transcript } from "./helpers";
 
 // The two-pane shell: layout at wide and phone widths, the pinned composer, scrolling, and the sidebar drawer.
 test.beforeEach(async ({ page }) => {
@@ -43,7 +43,7 @@ test.describe("phone width", () => {
     await page.getByRole("button", { name: "Dataset", exact: true }).click();
     await expect(page.getByRole("button", { name: "Load sample dataset" })).toBeVisible();
     await page.getByRole("button", { name: "Load sample dataset" }).click();
-    await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible();
+    await expect(orders(page)).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 

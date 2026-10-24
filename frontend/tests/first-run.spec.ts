@@ -2,10 +2,11 @@ import { test, expect, type Page } from "@playwright/test";
 import { csv, openChat, question, tables } from "./helpers";
 
 // First run: the empty Chat, uploading (chooser and drag-and-drop), upload feedback, rejection, replacement, sample, Dataset summary.
+// With no Tables the drop zone and the sample option are in the main pane (the only ones on the page); then they move to the sidebar.
 test.beforeEach(({ page }) => openChat(page));
 
 const table = (page: Page, name: string) => tables(page).getByRole("button", { name: new RegExp(`^${name}\\b`) });
-const summary = (page: Page) => page.getByText(/ tables? · .* rows? · .* relationships?$/);
+const summary = (page: Page) => page.getByText(/ tables?, .* rows? and .* relationships?, loaded and cleaned\./);
 
 test("an empty Chat shows the drop zone, the sample option and a disabled composer with a hint", async ({ page }) => {
   await expect(page.getByText("Drop CSV files here, or")).toBeVisible();
@@ -24,7 +25,7 @@ test("choosing files uploads them at once, then enables the composer and shows t
   await page.getByLabel("CSV files").setInputFiles([csv("customers.csv", "id,name\n1,a\n2,b\n"), csv("orders.csv", "id,customer_id\n1,1\n2,1\n3,2\n")]);
   await expect(table(page, "customers")).toContainText("2 rows");
   await expect(table(page, "orders")).toContainText("3 rows");
-  await expect(page.getByText("2 tables · 5 rows · 1 relationship", { exact: true })).toBeVisible();
+  await expect(page.getByText("2 tables, 5 rows and 1 relationship, loaded and cleaned. Outliers are flagged, not removed.", { exact: true })).toBeVisible();
   await expect(question(page)).toBeEnabled();
   await expect(page.getByText("Add data to start asking")).toHaveCount(0);
 });
@@ -84,7 +85,7 @@ test("re-uploading a Table name shows a replaced badge in the Tables list", asyn
 test("loading the sample dataset shows the Dataset summary and enables the composer", async ({ page }) => {
   await page.getByRole("button", { name: "Load sample dataset" }).click();
   await expect(table(page, "orders")).toBeVisible();
-  await expect(page.getByText("8 tables · 797 rows · 1 relationship", { exact: true })).toBeVisible();
+  await expect(page.getByText("8 tables, 797 rows and 1 relationship, loaded and cleaned. Outliers are flagged, not removed.", { exact: true })).toBeVisible();
   await expect(question(page)).toBeEnabled();
 });
 
@@ -107,4 +108,31 @@ test("a resumed Chat with data and no Turns shows the summary at once", async ({
   await page.reload();
   await expect(summary(page)).toBeVisible();
   await expect(question(page)).toBeEnabled();
+});
+
+test("the drop zone and sample option sit in the main pane until there are Tables, then only in the sidebar", async ({ page }) => {
+  const sidebar = page.getByRole("dialog", { name: "Dataset" });
+  const main = page.getByRole("region", { name: "Transcript" });
+  await expect(main.getByLabel("CSV files")).toBeAttached();
+  await expect(main.getByRole("button", { name: "Load sample dataset" })).toBeVisible();
+  await expect(sidebar.getByRole("heading", { name: "Data" })).toHaveCount(0);
+  await page.getByLabel("CSV files").setInputFiles(csv("one.csv", "id,amount\n1,5\n2,7\n"));
+  await expect(table(page, "one")).toContainText("2 rows");
+  await expect(page.getByText("1 table, 2 rows and 0 relationships, loaded and cleaned. Outliers are flagged, not removed.", { exact: true })).toBeVisible();
+  await expect(sidebar.getByLabel("CSV files")).toBeAttached();
+  await expect(page.getByLabel("CSV files")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Load sample dataset" })).toHaveCount(1);
+  await sidebar.getByRole("button", { name: "Load sample dataset" }).click();
+  await expect(table(page, "orders")).toBeVisible();
+  await expect(summary(page)).toContainText("9 tables, 799 rows and 1 relationship");
+});
+
+test("the page has exactly one h1: the empty state's, then a hidden one once there are Turns", async ({ page }) => {
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ask anything about your data.");
+  await page.getByRole("button", { name: "Load sample dataset" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ask anything about your data.");
+  await question(page).fill("hello");
+  await question(page).press("Enter");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("CSVChat conversation");
+  await expect(page.getByRole("heading", { name: "How your tables connect" })).toHaveCount(0); // the first Turn replaced the empty state
 });

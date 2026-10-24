@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { TurnView, type Turn } from "./turn";
 
 const NEAR_BOTTOM = 48; // px from the bottom that still counts as "at the bottom"
 
-/** The scrolling list of Turns. Follows new content (new Turns, streamed text, charts) unless the user has scrolled up. */
-export function Transcript({ turns, onRetry, busy }: { turns: Turn[]; onRetry: (question: string) => void; busy: boolean }) {
+/**
+ * The scrolling list of Turns. Follows new content (new Turns, streamed text, charts) unless the user has scrolled up.
+ * Before the first Turn it shows `empty` instead (the first Turn replaces it).
+ */
+export function Transcript({ turns, onRetry, busy, empty }: { turns: Turn[]; onRetry: (question: string) => void; busy: boolean; empty: ReactNode }) {
   const scroller = useRef<HTMLElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const following = useRef(true);
@@ -23,9 +26,10 @@ export function Transcript({ turns, onRetry, busy }: { turns: Turn[]; onRetry: (
   }, []);
 
   // On load, and whenever a Turn is added (the user just asked): jump to the bottom, even from further up.
+  // With no Turns (the empty state) it stays at the top instead: nothing to follow yet.
   useEffect(() => {
-    following.current = true;
-    toBottom();
+    following.current = turns.length > 0;
+    if (following.current) toBottom();
   }, [turns.length]);
 
   return (
@@ -43,7 +47,8 @@ export function Transcript({ turns, onRetry, busy }: { turns: Turn[]; onRetry: (
         lastTop.current = el.scrollTop;
       }}
     >
-      <div ref={content} className="mx-auto flex max-w-3xl flex-col gap-6 p-4">
+      <div ref={content} className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-6 sm:px-8 sm:py-10">
+        {turns.length === 0 && empty}
         {turns.map((t, i) => (
           // The As-of Date chip shows only when the date differs from the previous Turn's (the first Turn always shows it); a blank date never shows one.
           <TurnView key={t.id} turn={t} showAsOf={(t.asOfDate ?? "") !== (turns[i - 1]?.asOfDate ?? "")} onRetry={() => onRetry(t.question)} retryDisabled={busy} />

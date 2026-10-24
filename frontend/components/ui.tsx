@@ -27,10 +27,10 @@ export function Button({ variant = "primary", className, ...props }: ComponentPr
   return <button {...props} className={buttonClass(variant, className)} />;
 }
 
-/** A bordered surface; `as` picks the element (article, section, figure, ...). */
-export function Card<T extends ElementType = "div">({ as, className, ...props }: { as?: T } & Omit<ComponentProps<T>, "as">) {
+/** A bordered surface; `as` picks the element (article, section, figure, ...). `pad` replaces the default padding (a `p-*` in `className` would not reliably win). */
+export function Card<T extends ElementType = "div">({ as, pad = "p-4", className, ...props }: { as?: T; pad?: string } & Omit<ComponentProps<T>, "as">) {
   const Tag: ElementType = as ?? "div";
-  return <Tag {...props} className={cx("rounded-card border border-border bg-background p-4 shadow-sm", className)} />;
+  return <Tag {...props} className={cx("rounded-card border border-border bg-background shadow-sm", pad, className)} />;
 }
 
 export function Input({ className, ...props }: ComponentProps<"input">) {

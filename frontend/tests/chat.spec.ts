@@ -1,13 +1,13 @@
 import { test, expect } from "@playwright/test";
-import { csv, openChat, question } from "./helpers";
+import { csv, openChat, orders, question } from "./helpers";
 
 // Each test opens "/", which creates a fresh Chat on the fake backend, so tests are independent.
 test.beforeEach(({ page }) => openChat(page));
 
 test("loads the sample dataset", async ({ page }) => {
   await page.getByRole("button", { name: "Load sample dataset" }).click();
-  await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible();
-  await expect(page.getByLabel("Relationships")).toBeVisible();
+  await expect(orders(page)).toBeVisible();
+  await expect(page.getByRole("list", { name: "Relationships" })).toContainText("orders.customer_id to customers.id"); // the schema graph's text alternative
   await expect(page.getByLabel("As-of Date")).toHaveValue("2024-11-04");
 });
 
@@ -33,5 +33,5 @@ test("shows partial Cleaning Reports when an upload is rejected", async ({ page 
   await page.getByLabel("CSV files").setInputFiles([csv("good.csv", "id,name\n1,a\n2,b\n"), csv("bad.csv", "x")]);
   await expect(page.getByText("bad.csv: could not parse as CSV")).toBeVisible();
   await expect(page.getByText("1 earlier file(s) were loaded")).toBeVisible();
-  await expect(page.getByRole("button", { name: /^good\b/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Tables" }).getByRole("button", { name: /^good\b/ })).toBeVisible();
 });
