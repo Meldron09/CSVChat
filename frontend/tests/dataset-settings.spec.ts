@@ -10,7 +10,7 @@ async function saved(page: Page) {
 }
 
 const dateField = (page: Page) => page.getByLabel("As-of Date");
-const notes = (page: Page) => page.getByLabel("Dataset Notes");
+const notes = (page: Page) => page.getByLabel("Business definitions");
 /** The message box stays disabled until a Table exists: upload a tiny CSV (the sample would also set the As-of Date). */
 async function addData(page: Page) {
   await page.getByLabel("CSV files").setInputFiles({ name: "t.csv", mimeType: "text/csv", buffer: Buffer.from("id\n1\n") });

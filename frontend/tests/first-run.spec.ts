@@ -8,7 +8,7 @@ const table = (page: Page, name: string) => tables(page).getByRole("button", { n
 const summary = (page: Page) => page.getByText(/ tables? · .* rows? · .* relationships?$/);
 
 test("an empty Chat shows the drop zone, the sample option and a disabled composer with a hint", async ({ page }) => {
-  await expect(page.getByText("Drop CSV files here or")).toBeVisible();
+  await expect(page.getByText("Drop CSV files here, or")).toBeVisible();
   await expect(page.getByLabel("CSV files")).toBeEnabled();
   await expect(page.getByRole("button", { name: "Load sample dataset" })).toBeEnabled();
   await expect(question(page)).toBeDisabled();
@@ -35,8 +35,8 @@ test("dropping files on the drop zone uploads them", async ({ page }) => {
     dt.items.add(new File(["id,name\n1,a\n"], "dropped.csv", { type: "text/csv" }));
     return dt;
   });
-  await page.getByText("Drop CSV files here or").dispatchEvent("dragover", { dataTransfer });
-  await page.getByText("Drop CSV files here or").dispatchEvent("drop", { dataTransfer });
+  await page.getByText("Drop CSV files here, or").dispatchEvent("dragover", { dataTransfer });
+  await page.getByText("Drop CSV files here, or").dispatchEvent("drop", { dataTransfer });
   await expect(table(page, "dropped")).toContainText("1 rows");
   await expect(question(page)).toBeEnabled();
 });

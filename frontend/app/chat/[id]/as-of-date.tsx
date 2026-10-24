@@ -39,12 +39,12 @@ export function AsOfDateField() {
   const { asOfDate, setAsOfDate } = useAsOfDate();
   return (
     <div className="flex flex-col text-sm">
-      <label className="flex flex-col font-medium">
-        As-of Date
-        <Input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} aria-describedby="as-of-help" className="p-1" />
+      <label className="flex flex-col gap-1.5">
+        <span className="font-semibold">As-of date</span>
+        <Input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} aria-describedby="as-of-help" />
       </label>
-      <span id="as-of-help" className="mt-1 text-xs text-muted">
-        &ldquo;Past year&rdquo;, &ldquo;last 6 months&rdquo; and similar are counted back from this date. Sent with every question.
+      <span id="as-of-help" className="mt-2 text-xs text-muted">
+        &ldquo;Past year&rdquo; and &ldquo;last 6 months&rdquo; are counted back from this date. It goes with every question.
       </span>
     </div>
   );

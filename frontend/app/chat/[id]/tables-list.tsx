@@ -18,35 +18,43 @@ export function TablesList({ reports, profile }: { reports: CleaningReport[]; pr
 
   return (
     <>
-      <Card as="section" className="mt-6 text-sm" aria-label="Tables">
-        <h2 className="font-semibold">Tables</h2>
-        {reports.length === 0 ? (
-          <p className="mt-1 text-muted">No Tables yet. Upload CSV files or load the sample dataset.</p>
-        ) : (
-          <ul className="mt-1 flex flex-col">
-            {reports.map((r) => {
-              const n = flaggedCount(r);
-              return (
-                <li key={r.table}>
-                  <button
-                    type="button"
-                    aria-haspopup="dialog"
-                    onClick={() => setOpenTable(r.table)}
-                    className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left hover:bg-background"
-                  >
-                    <span className="min-w-0 flex-1 break-all font-medium">{r.table}</span>
-                    <span className="shrink-0 text-muted">{r.rows_loaded.toLocaleString()} rows</span>
-                    {r.replaced && <Badge>replaced</Badge>}
-                    {n > 0 && <Badge tone="warning">{n} flagged</Badge>}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
+      <section aria-label="Tables" className="flex flex-col gap-2 text-sm">
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="font-semibold">Tables</h2>
+          {reports.length > 0 && <span className="text-muted">{reports.reduce((n, r) => n + r.rows_loaded, 0).toLocaleString()} rows</span>}
+        </div>
+        <Card className="p-2">
+          {reports.length === 0 ? (
+            <p className="px-2 py-1 text-muted">No Tables yet. Upload CSV files or load the sample dataset.</p>
+          ) : (
+            <ul className="flex flex-col">
+              {reports.map((r) => {
+                const n = flaggedCount(r);
+                return (
+                  <li key={r.table}>
+                    <button
+                      type="button"
+                      aria-haspopup="dialog"
+                      onClick={() => setOpenTable(r.table)}
+                      className="flex min-h-11 w-full items-center gap-2 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-surface"
+                    >
+                      <span className="min-w-0 flex-1 break-all font-semibold">{r.table}</span>
+                      {r.replaced && <Badge>replaced</Badge>}
+                      {n > 0 && <Badge tone="warning">{n} flagged</Badge>}
+                      <span className="shrink-0 text-right tabular-nums text-muted">
+                        {r.rows_loaded.toLocaleString()}
+                        <span className="sr-only"> rows</span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      </section>
       {profile && (
-        <Card as="section" className="mt-4 text-sm" aria-label="Relationships">
+        <Card as="section" className="text-sm" aria-label="Relationships">
           <h2 className="font-semibold">Relationships</h2>
           {profile.relationships.length === 0 ? (
             <p className="mt-1 text-muted">No relationships found between the {profile.tables.length} table(s).</p>

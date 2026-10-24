@@ -39,8 +39,10 @@ export function NotesEditor({
   }
 
   return (
-    <>
+    <div className="flex flex-col gap-2">
+      <label htmlFor="dataset-notes" className="text-sm font-semibold">Business definitions</label>
       <Textarea
+        id="dataset-notes"
         name="dataset_notes"
         value={notes}
         onChange={(e) => {
@@ -49,14 +51,14 @@ export function NotesEditor({
           setStatus(null);
         }}
         onBlur={save}
-        aria-label="Dataset Notes"
-        placeholder="Dataset Notes (optional): business definitions the analysis must follow, e.g. what counts as revenue"
-        className="min-h-20"
+        aria-describedby="notes-help"
+        className="min-h-32"
         disabled={disabled}
       />
+      <span id="notes-help" className="text-xs text-muted">Rules the analysis must follow, e.g. what counts as revenue. Saved when you click out of the box.</span>
       {status === "saving" && <p role="status" className="text-sm text-muted">Saving notes…</p>}
       {status === "saved" && <p role="status" className="text-sm text-muted">Notes saved. Applies to your next question.</p>}
       {typeof status === "object" && status && <p role="alert" className="text-sm text-danger-text">Notes not saved: {status.failed}. Click out of the field to retry.</p>}
-    </>
+    </div>
   );
 }

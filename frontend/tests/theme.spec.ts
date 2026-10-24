@@ -78,7 +78,7 @@ test("every interactive control shows a focus ring", async ({ page }) => {
       const el = document.activeElement as HTMLElement;
       if (el === document.body) return null; // tabbed past the last control
       const s = getComputedStyle(el);
-      return { name: el.getAttribute("aria-label") || el.textContent?.trim() || el.outerHTML.slice(0, 80), style: s.outlineStyle, width: s.outlineWidth };
+      return { name: el.getAttribute("aria-label") || (el as HTMLInputElement).labels?.[0]?.textContent?.trim() || el.textContent?.trim() || el.outerHTML.slice(0, 80), style: s.outlineStyle, width: s.outlineWidth };
     });
     if (!ring) break;
     expect(ring.style, `focus ring on "${ring.name}"`).not.toBe("none");
@@ -86,7 +86,7 @@ test("every interactive control shows a focus ring", async ({ page }) => {
     seen.push(ring.name);
   }
   // theme toggle (its aria-label), As-of Date, drop zone, sample option, message box (the disabled Ask button is skipped)
-  expect(seen).toEqual(expect.arrayContaining(["Switch to dark theme", "Copy chat link", "New chat", "CSV files", "Dataset Notes", "Load sample dataset", "Question"]));
+  expect(seen).toEqual(expect.arrayContaining(["Switch to dark theme", "Copy chat link", "New chat", "CSV files", "Business definitions", "Load sample dataset", "Question"]));
 });
 
 test("reduced motion disables transitions", async ({ page }) => {

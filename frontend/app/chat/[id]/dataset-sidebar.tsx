@@ -38,11 +38,11 @@ export function DatasetSidebar({ children }: { children: ReactNode }) {
       id={ID}
       aria-label="Dataset"
       onClick={(e) => e.target === ref.current && ref.current.close()} // a click on the backdrop
-      className="fixed inset-y-0 left-0 m-0 h-dvh max-h-none w-[min(24rem,90vw)] overflow-y-auto border-r border-border bg-background p-4 text-foreground backdrop:bg-black/50 lg:static lg:block lg:h-auto lg:w-96 lg:shrink-0 lg:bg-surface"
+      className="fixed inset-y-0 left-0 m-0 h-dvh max-h-none w-[min(24rem,90vw)] overflow-y-auto border-r border-border bg-surface p-5 text-foreground backdrop:bg-black/50 lg:relative lg:block lg:h-auto lg:w-85 lg:shrink-0"
     >
       <div className="mb-4 flex items-center justify-between lg:hidden">
-        <h2 className="font-semibold">Dataset</h2>
-        <Button variant="secondary" className="px-3 py-1" onClick={() => ref.current?.close()}>
+        <h2 className="text-base font-semibold">Dataset</h2>
+        <Button variant="secondary" onClick={() => ref.current?.close()}>
           Close
         </Button>
       </div>
