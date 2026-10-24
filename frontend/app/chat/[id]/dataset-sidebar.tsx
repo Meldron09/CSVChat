@@ -10,7 +10,7 @@ const LG = "(min-width: 1024px)"; // Tailwind's `lg`
 /** Header button that opens the sidebar as a drawer (below `lg` only). */
 export function OpenSidebarButton() {
   return (
-    <Button variant="secondary" className="px-3 py-1 lg:hidden" onClick={() => (document.getElementById(ID) as HTMLDialogElement).showModal()}>
+    <Button variant="secondary" className="lg:hidden" onClick={() => (document.getElementById(ID) as HTMLDialogElement).showModal()}>
       Dataset
     </Button>
   );

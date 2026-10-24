@@ -21,7 +21,7 @@ test.beforeEach(({ page }) => openChat(page));
 
 test("Copy chat link puts the Chat URL on the clipboard and confirms it", async ({ page }) => {
   await header(page).getByRole("button", { name: "Copy chat link" }).click();
-  await expect(header(page).getByRole("status").filter({ hasText: "Chat link copied" })).toBeVisible();
+  await expect(header(page).getByRole("status").filter({ hasText: "Link copied" })).toBeVisible();
   expect(await clipboard(page)).toBe(page.url());
 });
 
@@ -57,7 +57,7 @@ test.describe("a Chat with Tables", () => {
 
   test("Copy link copies the Chat URL and keeps the dialog open", async ({ page }) => {
     await confirm(page).getByRole("button", { name: "Copy link" }).click();
-    await expect(confirm(page).getByText("Chat link copied")).toBeVisible();
+    await expect(confirm(page).getByText("Link copied")).toBeVisible();
     expect(await clipboard(page)).toBe(page.url());
     await expect(confirm(page)).toBeVisible();
   });

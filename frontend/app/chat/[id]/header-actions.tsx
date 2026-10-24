@@ -21,19 +21,22 @@ export function HeaderActions() {
     setTimeout(() => setCopied(""), 3000);
   }
 
-  const message = copied === "ok" ? "Chat link copied" : copied === "failed" ? "Could not copy the link" : "";
+  const message = copied === "ok" ? "Link copied" : copied === "failed" ? "Could not copy the link" : "";
 
   return (
     <>
-      <span role="status" className="text-sm text-muted">
-        {message}
+      {/* Out of flow (absolute, under the header's right edge) so showing it never moves the header. */}
+      <span role="status" className="pointer-events-none absolute right-4 top-full z-10 mt-2">
+        {copied && (
+          <span className="block rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-md">{message}</span>
+        )}
       </span>
-      <Button variant="secondary" className="px-3 py-1" onClick={copy}>
+      <Button variant="ghost" onClick={copy}>
         Copy chat link
       </Button>
       <a
         href="/"
-        className={buttonClass("secondary", "px-3 py-1")}
+        className={buttonClass("secondary")}
         onClick={(e) => {
           if (!hasContent) return; // an empty Chat just navigates
           e.preventDefault();
@@ -46,7 +49,7 @@ export function HeaderActions() {
         ref={dialog}
         aria-label="Start a new chat?"
         onClick={(e) => e.target === dialog.current && dialog.current.close()} // a click on the backdrop
-        className="m-auto w-[min(26rem,90vw)] rounded-card border border-border bg-background p-4 text-foreground backdrop:bg-black/50"
+        className="m-auto w-[min(26rem,90vw)] rounded-card border border-border bg-background p-6 text-foreground shadow-md backdrop:bg-black/50"
       >
         <h2 className="font-semibold">Start a new chat?</h2>
         <p className="mt-2 text-sm text-muted">This Chat keeps its Tables and Turns, but you will need its link to come back to it.</p>

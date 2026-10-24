@@ -10,40 +10,44 @@ const open = async (page: Page, os: "light" | "dark") => {
   await page.emulateMedia({ colorScheme: os });
   await openChat(page);
 };
-const theme = (page: Page, name: string) => page.getByRole("group", { name: "Theme" }).getByRole("button", { name });
+const toggle = (page: Page) => page.getByRole("banner").getByRole("button", { name: /^Switch to (light|dark) theme$/ });
+const toDark = (page: Page) => page.getByRole("button", { name: "Switch to dark theme", exact: true });
+const toLight = (page: Page) => page.getByRole("button", { name: "Switch to light theme", exact: true });
 
 test("with no choice made the app follows the OS", async ({ page }) => {
   await open(page, "dark");
   await expect(html(page)).not.toHaveAttribute("data-theme", /.*/);
   expect(await background(page)).toBe(DARK_BG);
-  await expect(theme(page, "System")).toHaveAttribute("aria-pressed", "true");
+  await expect(toLight(page)).toBeVisible(); // the label names the action, so it says how to leave dark
   await page.emulateMedia({ colorScheme: "light" });
   expect(await background(page)).toBe(LIGHT_BG);
+  await expect(toDark(page)).toBeVisible(); // and follows the OS while nothing is stored
+  expect(await page.evaluate(() => localStorage.getItem("theme"))).toBeNull();
 });
 
-test("the toggle switches light, dark and system", async ({ page }) => {
+test("the toggle switches between light and dark", async ({ page }) => {
   await open(page, "light");
-  await theme(page, "Dark").click();
+  const button = toggle(page);
+  expect((await button.boundingBox())!.width).toBeGreaterThanOrEqual(44);
+  expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await expect(button.locator("svg")).toHaveAttribute("aria-hidden", "true");
+  await toDark(page).click();
   await expect(html(page)).toHaveAttribute("data-theme", "dark");
   expect(await background(page)).toBe(DARK_BG);
-  await expect(theme(page, "Dark")).toHaveAttribute("aria-pressed", "true");
+  await expect(toLight(page)).toBeVisible();
 
-  await page.emulateMedia({ colorScheme: "dark" });
-  await theme(page, "Light").click();
+  await page.emulateMedia({ colorScheme: "dark" }); // an explicit choice beats the OS either way
+  await toLight(page).click();
   await expect(html(page)).toHaveAttribute("data-theme", "light");
   expect(await background(page)).toBe(LIGHT_BG);
-
-  await theme(page, "System").click();
-  await expect(html(page)).not.toHaveAttribute("data-theme", /.*/);
-  expect(await background(page)).toBe(DARK_BG); // the OS is dark
-  await expect(theme(page, "System")).toHaveAttribute("aria-pressed", "true");
+  await expect(toDark(page)).toBeVisible();
 });
 
 test("the choice survives a reload and is applied before first paint", async ({ page }) => {
   await open(page, "light");
-  await theme(page, "Dark").click();
+  await toDark(page).click();
   await page.reload();
-  await expect(theme(page, "Dark")).toHaveAttribute("aria-pressed", "true");
+  await expect(toLight(page)).toBeVisible();
 
   // With every framework script blocked nothing can hydrate, so only the inline <head> script can have set the theme:
   // the first paint is already dark.
@@ -51,18 +55,15 @@ test("the choice survives a reload and is applied before first paint", async ({ 
   await page.reload();
   await expect(html(page)).toHaveAttribute("data-theme", "dark");
   expect(await background(page)).toBe(DARK_BG);
-  await expect(theme(page, "Dark")).toHaveAttribute("aria-pressed", "false"); // the React toggle did not run
+  await expect(page.getByRole("banner").getByRole("button", { name: "Switch theme", exact: true })).toBeVisible(); // the React toggle did not run
 });
 
-test("a stored choice beats the OS, and System clears it", async ({ page }) => {
+test("a stored choice beats the OS", async ({ page }) => {
   await open(page, "dark");
-  await theme(page, "Light").click();
+  await toLight(page).click();
   await page.reload();
   expect(await background(page)).toBe(LIGHT_BG);
-  await theme(page, "System").click();
-  await page.reload();
-  expect(await background(page)).toBe(DARK_BG);
-  expect(await page.evaluate(() => localStorage.getItem("theme"))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("light");
 });
 
 test("every interactive control shows a focus ring", async ({ page }) => {
@@ -84,8 +85,8 @@ test("every interactive control shows a focus ring", async ({ page }) => {
     expect(ring.width, `focus ring on "${ring.name}"`).not.toBe("0px");
     seen.push(ring.name);
   }
-  // theme toggle (text is lowercase, capitalised by CSS), As-of Date, drop zone, sample option, message box (the disabled Ask button is skipped)
-  expect(seen).toEqual(expect.arrayContaining(["light", "dark", "system", "CSV files", "Dataset Notes", "Load sample dataset", "Question"]));
+  // theme toggle (its aria-label), As-of Date, drop zone, sample option, message box (the disabled Ask button is skipped)
+  expect(seen).toEqual(expect.arrayContaining(["Switch to dark theme", "Copy chat link", "New chat", "CSV files", "Dataset Notes", "Load sample dataset", "Question"]));
 });
 
 test("reduced motion disables transitions", async ({ page }) => {

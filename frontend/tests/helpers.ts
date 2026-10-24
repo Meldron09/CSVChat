@@ -34,9 +34,9 @@ export async function ask(page: Page, text: string) {
 
 /**
  * Screenshot harness (spec `screenshots.spec.ts`, run with SHOTS=1 SHOTS_DIR=...): saves `<SHOTS_DIR>/<stage>/<name>-<theme>-<width>.png`
- * for light/dark x 1440/390 of whatever the page currently shows. Screenshots are never committed.
+ * for light/dark x 1440/390 of whatever the page currently shows (`before` runs just before each shot). Screenshots are never committed.
  */
-export async function shoot(page: Page, stage: string, name: string) {
+export async function shoot(page: Page, stage: string, name: string, before?: () => Promise<void>) {
   const dir = process.env.SHOTS_DIR;
   if (!dir) throw new Error("SHOTS_DIR is not set");
   for (const scheme of ["light", "dark"] as const) {
@@ -44,6 +44,7 @@ export async function shoot(page: Page, stage: string, name: string) {
     for (const [width, height] of [[1440, 900], [390, 844]]) {
       await page.setViewportSize({ width, height });
       await page.waitForTimeout(400); // let colour transitions settle
+      await before?.(); // e.g. re-trigger a toast that would have expired
       await page.screenshot({ path: `${dir}/${stage}/${name}-${scheme}-${width}.png` });
     }
   }

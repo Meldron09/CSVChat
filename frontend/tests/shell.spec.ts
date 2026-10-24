@@ -25,7 +25,7 @@ test.describe("wide screen", () => {
     await expect(sidebar.getByRole("button", { name: "Load sample dataset" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Dataset", exact: true })).toBeHidden(); // no drawer button
     await expect(page.getByRole("banner").getByText("CSVChat")).toBeVisible();
-    await expect(page.getByRole("group", { name: "Theme" })).toBeVisible();
+    await expect(page.getByRole("banner").getByRole("button", { name: /^Switch to (light|dark) theme$/ })).toBeVisible();
     const [s, t] = await Promise.all([sidebar.boundingBox(), transcript(page).boundingBox()]);
     expect(s!.x + s!.width).toBeLessThanOrEqual(t!.x + 1);
     expect(Math.abs(s!.y - t!.y)).toBeLessThan(2);
