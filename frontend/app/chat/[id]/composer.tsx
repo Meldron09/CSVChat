@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button, Textarea } from "@/components/ui";
+import { useAsOfDate } from "./as-of-date";
 
 /** The message box, pinned under the Transcript: Enter sends, Shift+Enter adds a newline, grows with its text, disabled while `busy`. */
 export function Composer({ busy, onSend }: { busy: boolean; onSend: (question: string) => void }) {
   const [question, setQuestion] = useState("");
+  const { asOfDate } = useAsOfDate();
   const box = useRef<HTMLTextAreaElement>(null);
   const hadFocus = useRef(false);
 
@@ -59,6 +61,7 @@ export function Composer({ busy, onSend }: { busy: boolean; onSend: (question: s
           {busy ? "Working…" : "Ask"}
         </Button>
       </div>
+      <p className="mx-auto mt-1 max-w-3xl text-xs text-muted">{asOfDate ? `as of ${asOfDate}` : "no as-of date"}</p>
     </form>
   );
 }

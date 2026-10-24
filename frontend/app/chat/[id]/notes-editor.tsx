@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Button, Textarea } from "@/components/ui";
+import { useRef, useState } from "react";
+import { Textarea } from "@/components/ui";
 
-/** Dataset Notes box (also submitted with the upload form) plus a Save button: notes stay editable any time. */
+type Status = "saving" | "saved" | { failed: string } | null;
+
+/** Dataset Notes box (also submitted with the upload form). Edits are saved when the field loses focus. */
 export function NotesEditor({
   chatId,
   notes,
@@ -15,19 +17,23 @@ export function NotesEditor({
   setNotes: (notes: string) => void;
   disabled: boolean;
 }) {
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<Status>(null);
+  const dirty = useRef(false); // edited since the last successful save (a failed save is retried on the next blur)
 
   async function save() {
-    setStatus("Saving…");
+    if (!dirty.current) return;
+    setStatus("saving");
     try {
       const res = await fetch(`/api/chats/${chatId}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ dataset_notes: notes }),
       });
-      setStatus(res.ok ? "Saved. Applies to your next question." : `Save failed (${res.status})`);
+      if (!res.ok) throw new Error(`Save failed (${res.status})`);
+      dirty.current = false;
+      setStatus("saved");
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : String(e));
+      setStatus({ failed: e instanceof Error ? e.message : String(e) });
     }
   }
 
@@ -37,20 +43,19 @@ export function NotesEditor({
         name="dataset_notes"
         value={notes}
         onChange={(e) => {
+          dirty.current = true;
           setNotes(e.target.value);
           setStatus(null);
         }}
+        onBlur={save}
         aria-label="Dataset Notes"
         placeholder="Dataset Notes (optional): business definitions the analysis must follow, e.g. what counts as revenue"
         className="min-h-20"
         disabled={disabled}
       />
-      <div className="flex items-center gap-3 text-sm">
-        <Button type="button" variant="secondary" onClick={save} disabled={disabled} className="px-3 py-1">
-          Save notes
-        </Button>
-        {status && <span role="status" className="text-muted">{status}</span>}
-      </div>
+      {status === "saving" && <p role="status" className="text-sm text-muted">Saving notes…</p>}
+      {status === "saved" && <p role="status" className="text-sm text-muted">Notes saved. Applies to your next question.</p>}
+      {typeof status === "object" && status && <p role="alert" className="text-sm text-danger">Notes not saved: {status.failed}. Click out of the field to retry.</p>}
     </>
   );
 }

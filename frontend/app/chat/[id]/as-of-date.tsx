@@ -38,9 +38,14 @@ export function AsOfDateProvider({ chatId, savedAsOf, children }: { chatId: stri
 export function AsOfDateField() {
   const { asOfDate, setAsOfDate } = useAsOfDate();
   return (
-    <label className="flex flex-col text-sm">
-      As-of Date
-      <Input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} required className="p-1" />
-    </label>
+    <div className="flex flex-col text-sm">
+      <label className="flex flex-col font-medium">
+        As-of Date
+        <Input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} aria-describedby="as-of-help" className="p-1" />
+      </label>
+      <span id="as-of-help" className="mt-1 text-xs text-muted">
+        &ldquo;Past year&rdquo;, &ldquo;last 6 months&rdquo; and similar are counted back from this date. Sent with every question.
+      </span>
+    </div>
   );
 }

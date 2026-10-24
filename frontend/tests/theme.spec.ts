@@ -82,7 +82,7 @@ test("every interactive control shows a focus ring", async ({ page }) => {
     seen.push(ring.name);
   }
   // theme toggle (text is lowercase, capitalised by CSS), As-of Date, upload form, message box (the disabled Ask button is skipped)
-  expect(seen).toEqual(expect.arrayContaining(["light", "dark", "system", "CSV files", "Dataset Notes", "Save notes", "Upload CSVs", "Load sample dataset", "Question"]));
+  expect(seen).toEqual(expect.arrayContaining(["light", "dark", "system", "CSV files", "Dataset Notes", "Upload CSVs", "Load sample dataset", "Question"]));
 });
 
 test("reduced motion disables transitions", async ({ page }) => {
