@@ -95,7 +95,7 @@ Layout at wide (default 1280px) and phone (`test.use({ viewport })`, 390px) widt
 
 ## Turn tests (`turn.spec.ts`)
 
-Running (one status line; streamed text is `aria-hidden` inside the Transcript's `aria-live="polite"` region), done (Markdown, Charts, closed "How this was answered" disclosure grouped by task), failed + Retry (new Turn, failed one stays), the As-of Date chip rule, Markdown/plain-text rendering and resume after reload. Keywords: `markdown`, `plain`, `tasks`, `slow`, `fail`.
+Running (a checklist of every step so far, a spinner on the current one; streamed text is `aria-hidden` inside the Transcript's `aria-live="polite"` region), done (Markdown, Charts, closed "How this was answered" disclosure grouped by task), failed + Retry (new Turn, failed one stays), the As-of Date chip rule, Markdown/plain-text rendering and resume after reload. Keywords: `markdown`, `plain`, `tasks`, `slow`, `fail`.
 
 ## Screenshots (`screenshots.spec.ts`)
 

@@ -123,12 +123,12 @@ test("the As-of Date chip shows only when the date differs from the previous Tur
   await ask(page, "fourth"); // same again: no chip
   const t = transcript(page);
   await expect(page.getByRole("article")).toHaveCount(4);
-  await expect(t.getByText("as of 2024-11-04")).toHaveCount(1);
-  await expect(t.getByText("as of 2024-12-01")).toHaveCount(1);
-  await expect(page.getByRole("article", { name: "Question: first" }).getByText("as of 2024-11-04")).toBeVisible();
-  await expect(page.getByRole("article", { name: "Question: second" }).getByText(/^as of/)).toHaveCount(0);
-  await expect(page.getByRole("article", { name: "Question: third" }).getByText("as of 2024-12-01")).toBeVisible();
-  await expect(page.getByRole("article", { name: "Question: fourth" }).getByText(/^as of/)).toHaveCount(0);
+  await expect(t.getByText("As of 4 Nov 2024")).toHaveCount(1);
+  await expect(t.getByText("As of 1 Dec 2024")).toHaveCount(1);
+  await expect(page.getByRole("article", { name: "Question: first" }).getByText("As of 4 Nov 2024")).toBeVisible();
+  await expect(page.getByRole("article", { name: "Question: second" }).getByText(/^As of/)).toHaveCount(0);
+  await expect(page.getByRole("article", { name: "Question: third" }).getByText("As of 1 Dec 2024")).toBeVisible();
+  await expect(page.getByRole("article", { name: "Question: fourth" }).getByText(/^As of/)).toHaveCount(0);
 });
 
 test("a blank As-of Date never shows a chip, and a later dated Turn does", async ({ page }) => {
@@ -143,10 +143,10 @@ test("a blank As-of Date never shows a chip, and a later dated Turn does", async
   const check = async () => {
     const t = transcript(page);
     await expect(page.getByRole("article")).toHaveCount(4);
-    await expect(t.getByText(/^as of /)).toHaveText(["as of 2024-11-04", "as of 2024-11-04"]); // never "as of " or "as of null"
-    await expect(page.getByRole("article", { name: "Question: second" }).getByText(/^as of/)).toHaveCount(0);
-    await expect(page.getByRole("article", { name: "Question: third" }).getByText(/^as of/)).toHaveCount(0);
-    await expect(page.getByRole("article", { name: "Question: fourth" }).getByText("as of 2024-11-04")).toBeVisible();
+    await expect(t.getByText(/^As of /)).toHaveText(["As of 4 Nov 2024", "As of 4 Nov 2024"]); // never "as of " or "as of null"
+    await expect(page.getByRole("article", { name: "Question: second" }).getByText(/^As of/)).toHaveCount(0);
+    await expect(page.getByRole("article", { name: "Question: third" }).getByText(/^As of/)).toHaveCount(0);
+    await expect(page.getByRole("article", { name: "Question: fourth" }).getByText("As of 4 Nov 2024")).toBeVisible();
   };
   await check();
   await page.reload(); // saved Turns follow the same rule
@@ -187,7 +187,7 @@ test("a resumed Chat renders saved Turns the same way, failed ones still failed"
   await expect(turns.nth(1).getByRole("button", { name: "Retry" })).toBeEnabled();
   await expect(turns.nth(2).getByText("Revenue grew")).toBeVisible();
   await expect(turns.nth(0).getByText("This question failed")).toHaveCount(0);
-  await expect(transcript(page).getByText("as of 2024-11-04")).toHaveCount(1); // chip rule holds for saved Turns
+  await expect(transcript(page).getByText("As of 4 Nov 2024")).toHaveCount(1); // chip rule holds for saved Turns
 
   await turns.nth(2).locator("details").getByText("How this was answered").click(); // saved Turns keep their SQL, grouped by task
   await expect(turns.nth(2).getByRole("region", { name: "Task 2" }).getByText("SELECT region")).toBeVisible();

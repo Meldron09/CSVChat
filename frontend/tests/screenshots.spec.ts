@@ -72,6 +72,13 @@ test.describe("sidebar", () => {
   });
 });
 
+test("partial upload failure, drawer closed", async ({ page }) => {
+  await openChat(page);
+  await page.getByLabel("CSV files").setInputFiles([csv("good.csv", "id,name\n1,a\n2,b\n"), csv("bad.csv", "x")]);
+  await expect(page.getByRole("alert").filter({ hasText: "bad.csv" })).toBeVisible();
+  await shoot(page, STAGE, "partial-failure");
+});
+
 // The real Online Shop sample's shape (the mockup), served in place of the fake's 8 x 100-row sample for the main-pane shots.
 const SHOP: [string, number, [string, string][]][] = [
   ["customers", 10000, [["customer_id", "bigint"], ["first_name", "text"], ["last_name", "text"], ["email", "text"]]],

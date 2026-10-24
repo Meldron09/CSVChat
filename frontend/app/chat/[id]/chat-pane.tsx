@@ -81,7 +81,7 @@ export function ChatPane({ chatId, initialTurns }: { chatId: string; initialTurn
             // focus moved to another element outside; a blur to nowhere (the element was removed or disabled) keeps the flag
             onBlur={(e) => e.relatedTarget && !e.currentTarget.contains(e.relatedTarget) && (emptyHadFocus.current = false)}
           >
-            <EmptyState onAsk={ask} busy={busy} />
+            <EmptyState onAsk={ask} />
           </div>
         }
       />

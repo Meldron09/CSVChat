@@ -9,6 +9,15 @@ function today() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "2026-10-24" -> "24 Oct 2026", from the string itself (a Date would shift it by the time zone). Used by the composer chip and the Turn chips. */
+export function formatDate(iso: string) {
+  const [y, m, d] = iso.split("-");
+  const month = MONTHS[Number(m) - 1];
+  return y && month && d ? `${Number(d)} ${month} ${y}` : iso;
+}
+
 const AsOfDate = createContext<{ asOfDate: string; setAsOfDate: (date: string) => void }>({ asOfDate: "", setAsOfDate: () => {} });
 
 /** The Chat's As-of Date, shared by the sidebar (edits it, e.g. when the sample loads) and the chat pane (sends it with each message). */

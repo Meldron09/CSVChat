@@ -18,7 +18,7 @@ export function TablesList({ reports, profile }: { reports: CleaningReport[]; pr
       <section aria-label="Tables" className="flex flex-col gap-2 text-sm">
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="font-semibold">Tables</h2>
-          {reports.length > 0 && <span className="text-muted">{reports.reduce((n, r) => n + r.rows_loaded, 0).toLocaleString()} rows</span>}
+          {reports.length > 0 && <span className="text-muted">{reports.reduce((n, r) => n + r.rows_loaded, 0).toLocaleString("en-US")} rows</span>}
         </div>
         <Card pad="p-2">
           {reports.length === 0 ? (
@@ -39,7 +39,7 @@ export function TablesList({ reports, profile }: { reports: CleaningReport[]; pr
                       {r.replaced && <Badge>replaced</Badge>}
                       {n > 0 && <Badge tone="warning">{n} flagged</Badge>}
                       <span className="shrink-0 text-right tabular-nums text-muted">
-                        {r.rows_loaded.toLocaleString()}
+                        {r.rows_loaded.toLocaleString("en-US")}
                         <span className="sr-only"> rows</span>
                       </span>
                     </button>

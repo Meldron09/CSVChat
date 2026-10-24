@@ -52,8 +52,9 @@ test("a starter question is sent like a typed one and produces a Turn", async ({
 test("a running Turn replaces the starter questions at once, so none can be sent twice", async ({ page }) => {
   await loadSample(page);
   let release!: () => void;
+  const held = new Promise<void>((r) => (release = r)); // assigned now, so release() can never run while undefined
   await page.route("**/api/chats/*/messages", async (route) => {
-    await new Promise<void>((r) => (release = r)); // hold the request: the Turn stays running
+    await held; // hold the request: the Turn stays running
     await route.continue();
   });
   const starters = page.getByRole("region", { name: "Start with a question" }).getByRole("button");
@@ -67,8 +68,9 @@ test("a running Turn replaces the starter questions at once, so none can be sent
 test("keyboard focus on a starter question survives the Turn replacing it", async ({ page }) => {
   await loadSample(page);
   let release!: () => void;
+  const held = new Promise<void>((r) => (release = r)); // assigned now, so release() can never run while undefined
   await page.route("**/api/chats/*/messages", async (route) => {
-    await new Promise<void>((r) => (release = r)); // hold the request: the Turn stays running
+    await held; // hold the request: the Turn stays running
     await route.continue();
   });
   await page.getByRole("region", { name: "Start with a question" }).getByRole("button").first().focus();

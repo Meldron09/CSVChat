@@ -3,7 +3,7 @@
 import { starterQuestions } from "@/lib/starter-questions";
 import type { SchemaProfile } from "@/lib/api";
 import { useDataset } from "./dataset-context";
-import { DropZone } from "./drop-zone";
+import { DropZone, UploadError } from "./drop-zone";
 import { SchemaGraph } from "./schema-graph";
 
 const count = (n: number, noun: string) => `${n.toLocaleString("en-US")} ${noun}${n === 1 ? "" : "s"}`;
@@ -17,7 +17,7 @@ const datasetSummary = ({ tables, relationships }: SchemaProfile) =>
  * What the chat pane shows before the first Turn: the page's <h1>, then either the large drop zone (no Tables yet) or the
  * Dataset summary, schema graph and starter questions. The first Turn replaces all of it.
  */
-export function EmptyState({ onAsk, busy }: { onAsk: (question: string) => void; busy: boolean }) {
+export function EmptyState({ onAsk }: { onAsk: (question: string) => void }) {
   const { profile, reports, hasTables } = useDataset();
 
   return (
@@ -33,6 +33,7 @@ export function EmptyState({ onAsk, busy }: { onAsk: (question: string) => void;
       </div>
       {hasTables && profile ? (
         <>
+          <UploadError />
           <SchemaGraph profile={profile} reports={reports} />
           <section aria-labelledby="starters" className="flex flex-col gap-3">
             <h2 id="starters" className="text-base font-semibold">Start with a question</h2>
@@ -41,9 +42,8 @@ export function EmptyState({ onAsk, busy }: { onAsk: (question: string) => void;
                 <li key={q.question} className="flex">
                   <button
                     type="button"
-                    disabled={busy}
                     onClick={() => onAsk(q.question)}
-                    className="flex min-h-11 w-full flex-col gap-1 rounded-card border border-border bg-background px-5 py-4 text-left shadow-sm transition-colors enabled:hover:border-brand disabled:opacity-60"
+                    className="flex min-h-11 w-full flex-col gap-1 rounded-card border border-border bg-background px-5 py-4 text-left shadow-sm transition-colors hover:border-brand"
                   >
                     <span className="font-semibold leading-snug">{q.question}</span>
                     <span className="text-sm text-muted">{list.format(q.uses)}</span>

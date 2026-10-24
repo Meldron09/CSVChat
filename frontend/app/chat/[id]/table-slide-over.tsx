@@ -28,7 +28,7 @@ export function TableSlideOver({ report, profileTable, onClose }: { report: Clea
       <div className="flex flex-col gap-4 p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">{report.table}</h2>
-          <Button variant="secondary" className="px-3 py-1" onClick={() => ref.current?.close()}>
+          <Button variant="secondary" onClick={() => ref.current?.close()}>
             Close
           </Button>
         </div>
@@ -42,8 +42,8 @@ export function TableSlideOver({ report, profileTable, onClose }: { report: Clea
 function SchemaProfileColumns({ table: t }: { table: ProfileTable }) {
   return (
     <details className="text-sm">
-      <summary className="cursor-pointer font-medium">Schema Profile (what the agents see)</summary>
-      <p className="mt-2 text-muted">{t.row_count.toLocaleString()} rows</p>
+      <summary className="flex min-h-11 cursor-pointer items-center font-medium">Schema Profile (what the agents see)</summary>
+      <p className="mt-2 text-muted">{t.row_count.toLocaleString("en-US")} rows</p>
       <ul className="mt-1 pl-3 text-xs">
         {t.columns.map((c) => (
           <li key={c.name} className="break-all">
@@ -64,8 +64,8 @@ function Report({ report: r }: { report: CleaningReport }) {
         {r.replaced && <span className="ml-2 text-xs text-warning-foreground">replaced earlier Table</span>}
       </h3>
       <p className="mt-1 text-muted">
-        {r.rows_loaded.toLocaleString()} rows loaded of {r.rows_read.toLocaleString()} read ·{" "}
-        {r.duplicates_removed.toLocaleString()} duplicate rows removed · {r.encoding} · delimiter {JSON.stringify(r.delimiter)}
+        {r.rows_loaded.toLocaleString("en-US")} rows loaded of {r.rows_read.toLocaleString("en-US")} read ·{" "}
+        {r.duplicates_removed.toLocaleString("en-US")} duplicate rows removed · {r.encoding} · delimiter {JSON.stringify(r.delimiter)}
       </p>
       {r.duplicates_removed > 0 && <p className="text-xs text-muted">Duplicates: {r.duplicates_basis}.</p>}
       <div className="mt-3 overflow-x-auto">

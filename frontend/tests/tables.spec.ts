@@ -41,6 +41,7 @@ test("opens a Table's Cleaning Report and columns, and closes it", async ({ page
   await expect(report.getByRole("cell", { name: "id", exact: true })).toBeVisible();
   // the Schema Profile disclosure lives here now, with this Table's columns
   await expect(page.getByText("Schema Profile (what the agents see)")).toHaveCount(1);
+  expect((await slideOver(page).getByText("Schema Profile (what the agents see)").boundingBox())!.height).toBeGreaterThanOrEqual(44); // touch target
   await slideOver(page).getByText("Schema Profile (what the agents see)").click();
   await expect(slideOver(page).getByText("e.g. a | b").first()).toBeVisible();
   await slideOver(page).getByRole("button", { name: "Close" }).click();

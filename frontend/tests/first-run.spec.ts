@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { csv, openChat, question, tables } from "./helpers";
+import { csv, openChat, question, tables, transcript } from "./helpers";
 
 // First run: the empty Chat, uploading (chooser and drag-and-drop), upload feedback, rejection, replacement, sample, Dataset summary.
 // With no Tables the drop zone and the sample option are in the main pane (the only ones on the page); then they move to the sidebar.
@@ -53,9 +53,9 @@ test("while uploading, a spinner shows the names of the files being processed", 
   await expect(page.getByLabel("CSV files")).toBeEnabled();
 });
 
-test("a rejected upload shows an inline error in the sidebar and keeps the earlier files and their note", async ({ page }) => {
+test("a rejected upload shows an inline error in the main pane (until the first Turn) and keeps the earlier files and their note", async ({ page }) => {
   await page.getByLabel("CSV files").setInputFiles([csv("good.csv", "id,name\n1,a\n2,b\n"), csv("bad.csv", "x")]);
-  const error = page.getByRole("dialog", { name: "Dataset" }).getByText("bad.csv: could not parse as CSV");
+  const error = transcript(page).getByText("bad.csv: could not parse as CSV"); // with Tables but no Turns the main pane shows it: the sidebar strip is in a closed drawer on phones
   await expect(error).toBeVisible();
   await expect(error).toContainText("1 earlier file(s) were loaded");
   await expect(table(page, "good")).toBeVisible();

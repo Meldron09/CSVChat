@@ -19,7 +19,7 @@ type Dataset = {
   hasTables: boolean;
   /**
    * Turns in the Chat, reported by the chat pane. A deliberate mirror: the chat pane owns the Turns, while the sidebar-side
-   * consumers (Composer's Dataset summary, header New chat guard) only need the count. Lifting Turns into this context would
+   * consumers (the header's New chat guard) only need the count. Lifting Turns into this context would
    * re-render the whole sidebar on every streamed token.
    */
   turnCount: number;

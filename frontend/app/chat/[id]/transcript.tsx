@@ -36,7 +36,7 @@ export function Transcript({ turns, onRetry, busy, empty }: { turns: Turn[]; onR
     <section
       ref={scroller}
       aria-label="Transcript"
-      aria-live="polite" // announces the status line and the finished Answer; streamed text is aria-hidden (see turn.tsx)
+      aria-live="polite" // announces the progress steps and the finished Answer; streamed text is aria-hidden (see turn.tsx)
       tabIndex={0} // keyboard users can scroll it
       className="min-h-0 flex-1 overflow-y-auto"
       onScroll={(e) => {

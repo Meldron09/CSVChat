@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui";
 import type { TranscriptTurn } from "@/lib/api";
 import type { ChartSpec } from "@/lib/chart-spec";
+import { formatDate } from "./as-of-date";
 import { ChartView } from "./chart";
 import { AnswerMarkdown } from "./markdown";
 import { SqlBlock } from "./sql-block";
@@ -94,7 +95,7 @@ export function TurnView({ turn, showAsOf, onRetry, retryDisabled }: { turn: Tur
     <article className="flex flex-col gap-4" aria-label={`Question: ${turn.question}`}>
       <div className="flex max-w-[85%] flex-col items-end gap-1 self-end">
         <p className="whitespace-pre-wrap break-words rounded-card border border-border bg-surface px-4 py-2 text-base">{turn.question}</p>
-        {showAsOf && turn.asOfDate && <span className="rounded-chip bg-surface px-2 py-0.5 text-xs text-muted">as of {turn.asOfDate}</span>}
+        {showAsOf && turn.asOfDate && <span className="rounded-chip bg-surface px-2 py-0.5 text-xs text-muted">As of {formatDate(turn.asOfDate)}</span>}
       </div>
       {running ? (
         <>

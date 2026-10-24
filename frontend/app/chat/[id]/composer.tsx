@@ -2,17 +2,8 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { Button } from "@/components/ui";
-import { useAsOfDate } from "./as-of-date";
+import { formatDate, useAsOfDate } from "./as-of-date";
 import { useDataset } from "./dataset-context";
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-/** "2026-10-24" -> "24 Oct 2026", from the string itself (a Date would shift it by the time zone). */
-function formatDate(iso: string) {
-  const [y, m, d] = iso.split("-");
-  const month = MONTHS[Number(m) - 1];
-  return y && month && d ? `${Number(d)} ${month} ${y}` : iso;
-}
 
 /**
  * The message box, pinned under the Transcript: Enter sends, Shift+Enter adds a newline, grows with its text, disabled while `busy`

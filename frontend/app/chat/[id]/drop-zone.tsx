@@ -10,12 +10,18 @@ const UploadIcon = ({ className }: { className: string }) => (
   </svg>
 );
 
+/** The upload error, announced. Rendered once per screen: by the DropZone, or by the EmptyState once Tables exist (see DropZone). */
+export function UploadError() {
+  const { error } = useDataset();
+  return error ? <p role="alert" className="text-sm text-danger-text">{error}</p> : null;
+}
+
 /**
  * Adding data: a drop zone around the `CSV files` chooser, "Load sample dataset", the upload spinner and the upload error.
  * One instance is ever rendered (R2): the large one in the main pane while the Chat has no Tables, then the sidebar strip.
  */
 export function DropZone({ size }: { size: "strip" | "large" }) {
-  const { processing, error, upload, loadSample } = useDataset();
+  const { processing, upload, loadSample, turnCount } = useDataset();
   const [over, setOver] = useState(false);
   const busy = processing !== null;
   const large = size === "large";
@@ -86,7 +92,8 @@ export function DropZone({ size }: { size: "strip" | "large" }) {
           <span className="break-all">Cleaning and loading {processing.join(", ")}…</span>
         </p>
       )}
-      {error && <p role="alert" className="text-sm text-danger-text">{error}</p>}
+      {/* With Tables but no Turns the EmptyState shows the error instead: below `lg` this strip sits in the closed drawer. */}
+      {(large || turnCount > 0) && <UploadError />}
     </div>
   );
 }

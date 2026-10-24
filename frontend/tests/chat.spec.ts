@@ -35,3 +35,20 @@ test("shows partial Cleaning Reports when an upload is rejected", async ({ page 
   await expect(page.getByText("1 earlier file(s) were loaded")).toBeVisible();
   await expect(page.getByRole("region", { name: "Tables" }).getByRole("button", { name: /^good\b/ })).toBeVisible();
 });
+
+test("phone width: a first upload's partial failure shows its error in the main pane, without opening the drawer", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByLabel("CSV files").setInputFiles([csv("good.csv", "id,name\n1,a\n2,b\n"), csv("bad.csv", "x")]); // no Tables yet: the main pane's drop zone
+  const alert = page.getByRole("alert").filter({ hasText: "bad.csv: could not parse as CSV" });
+  await expect(alert).toBeVisible(); // the good file's Table now exists, so the main drop zone is gone; the drawer is closed
+  await expect(alert).toContainText("their Tables are listed below");
+  await expect(page.getByRole("alert").filter({ hasText: "bad.csv" })).toHaveCount(1); // not also in the (closed) sidebar strip
+  await expect(page.getByRole("dialog", { name: "Dataset" })).toBeHidden();
+});
+
+test("wide screen: the same partial failure shows its error once", async ({ page }) => {
+  await page.getByLabel("CSV files").setInputFiles([csv("good.csv", "id,name\n1,a\n2,b\n"), csv("bad.csv", "x")]);
+  const alerts = page.getByRole("alert").filter({ hasText: "bad.csv" });
+  await expect(alerts).toHaveCount(1);
+  await expect(alerts).toContainText("bad.csv: could not parse as CSV");
+});

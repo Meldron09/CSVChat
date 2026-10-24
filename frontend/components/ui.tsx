@@ -26,7 +26,7 @@ export const buttonClass = (variant: Variant, className?: string) =>
     className,
   );
 
-export function Button({ variant = "primary", className, ...props }: ComponentProps<"button"> & { variant?: Variant }) {
+export function Button({ variant = "secondary", className, ...props }: ComponentProps<"button"> & { variant?: Variant }) {
   return <button {...props} className={buttonClass(variant, className)} />;
 }
 

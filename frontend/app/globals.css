@@ -33,7 +33,7 @@
   --warning-bg: light-dark(#faedc0, #3d3010);               /* warning pill */
   --warning-foreground: light-dark(#2b1547, #f5d77a);       /* text on the pill, or warning text on the page */
 
-  --bar: #2b1547; /* the 6px bar at the very top of the page, in both themes */
+  --bar: light-dark(#2b1547, #cdb9f5); /* the 6px bar at the very top of the page (dark: the brand lilac, as #2b1547 vanishes on the dark ground) */
 
   --chart-1: light-dark(#7857bb, #8e6fd6);
   --chart-2: #20c4cd;
