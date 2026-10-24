@@ -19,10 +19,10 @@ test("a Chart follows the theme and switching updates it live", async ({ page })
   await ask(page, "multi series chart");
   await expect(page.locator(SERIES).first()).toBeVisible();
   const light = { tick: await paint(page, TICK, "fill"), grid: await paint(page, GRID, "stroke") };
-  expect(await paint(page, SERIES, "fill")).toBe("rgb(37, 99, 235)"); // --chart-1, light
+  expect(await paint(page, SERIES, "fill")).toBe("rgb(120, 87, 187)"); // --chart-1, light
 
   await page.emulateMedia({ colorScheme: "dark" });
-  await expect.poll(() => paint(page, SERIES, "fill")).toBe("rgb(96, 165, 250)"); // --chart-1, dark
+  await expect.poll(() => paint(page, SERIES, "fill")).toBe("rgb(142, 111, 214)"); // --chart-1, dark
   expect(await paint(page, TICK, "fill")).not.toBe(light.tick);
   expect(await paint(page, GRID, "stroke")).not.toBe(light.grid);
 });

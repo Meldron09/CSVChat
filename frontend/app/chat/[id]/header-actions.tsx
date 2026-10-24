@@ -60,7 +60,7 @@ export function HeaderActions() {
           <Button variant="secondary" autoFocus onClick={() => dialog.current?.close()}>
             Cancel
           </Button>
-          <a href="/" className={buttonClass("primary")}>
+          <a href="/" className={buttonClass("brand")}>
             New chat
           </a>
         </div>

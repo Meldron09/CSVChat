@@ -1,30 +1,45 @@
 @import "tailwindcss";
 
 /*
- * Design tokens. Each colour is light-dark(light, dark): the browser picks by `color-scheme`, which follows the OS
- * (`light dark`) until the user picks; the theme toggle then sets <html data-theme="light|dark"> (see the inline script
- * in layout.tsx and components/theme-toggle.tsx). Spacing uses Tailwind's scale (--spacing).
+ * Design tokens (Codemonk design system). Each colour is light-dark(light, dark): the browser picks by `color-scheme`,
+ * which follows the OS (`light dark`) until the user picks; the theme toggle then sets <html data-theme="light|dark">
+ * (see the inline script in layout.tsx and components/theme-toggle.tsx). The system only defines light; the dark
+ * values are derived from the purple. Spacing uses Tailwind's scale (--spacing).
  * The --chart-* variables are for theme-aware Charts (SVG: fill="var(--chart-1)").
  */
 :root {
   color-scheme: light dark;
 
-  --background: light-dark(#ffffff, #0a0a0a);
-  --foreground: light-dark(#171717, #ededed);
-  --surface: light-dark(#fafafa, #171717);       /* cards, panels */
-  --muted: light-dark(#52525b, #a1a1aa);         /* secondary text */
-  --border: light-dark(#d4d4d8, #3f3f46);        /* dividers, card outlines */
-  --border-strong: light-dark(#8a8a93, #71717a); /* form control outlines (3:1 on background) */
-  --accent: light-dark(#2563eb, #60a5fa);        /* the one accent colour */
-  --accent-foreground: light-dark(#ffffff, #0a0a0a);
-  --danger: light-dark(#b91c1c, #f87171);
-  --warning: light-dark(#b45309, #fbbf24);
+  --background: light-dark(#ffffff, #160b26);
+  --foreground: light-dark(#2b1547, #f3eefa);
+  --surface: light-dark(#faf8fc, #1f1235);        /* sidebar, panels */
+  --muted: light-dark(#4b5363, #b5abc7);          /* secondary text (AA for small text) */
+  --border: light-dark(#d9dbe0, #3a2a55);         /* dividers, card outlines */
+  --border-strong: light-dark(#c2c5cd, #7a68a0);  /* form control outlines (dark: 3:1 on both grounds) */
 
-  --chart-1: light-dark(#2563eb, #60a5fa);
-  --chart-2: light-dark(#0d9488, #2dd4bf);
-  --chart-3: light-dark(#d97706, #fbbf24);
-  --chart-4: light-dark(#7c3aed, #a78bfa);
-  --chart-5: light-dark(#db2777, #f472b6);
+  /* Brand purple: secondary outlines, links, the focus ring, filled confirm buttons. */
+  --brand: light-dark(#2b1547, #cdb9f5);
+  --brand-foreground: light-dark(#ffffff, #2b1547); /* text on a filled brand surface */
+
+  /* Accent red: ONLY the Ask button (one red moment per screen). */
+  --accent: #f35748;
+  --accent-hover: #db4a3b;
+  --accent-press: #c13e30;
+  --accent-foreground: #ffffff; /* ~3.35:1 on the red as drawn in the mockup; #2b1547 would give ~4.8:1 */
+
+  --danger: #f35748;                                        /* fills, borders, icons */
+  --danger-text: light-dark(#c13e30, #ff8a7e);              /* error text (AA); #f35748 is only 3.35:1 on white */
+  --warning: #efc530;                                       /* dots and markers */
+  --warning-bg: light-dark(#faedc0, #3d3010);               /* warning pill */
+  --warning-foreground: light-dark(#2b1547, #f5d77a);       /* text on the pill, or warning text on the page */
+
+  --bar: #2b1547; /* the 6px bar at the very top of the page, in both themes */
+
+  --chart-1: light-dark(#7857bb, #8e6fd6);
+  --chart-2: #20c4cd;
+  --chart-3: #eb5ab5;
+  --chart-4: #f58a1f;
+  --chart-5: #efc530;
 }
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
@@ -36,24 +51,49 @@
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-press: var(--accent-press);
   --color-accent-foreground: var(--accent-foreground);
   --color-danger: var(--danger);
+  --color-danger-text: var(--danger-text);
   --color-warning: var(--warning);
-  --radius-control: 0.375rem; /* buttons, inputs */
-  --radius-card: 0.625rem;    /* cards, panels */
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-bar: var(--bar);
+  --font-sans: var(--font-mona), system-ui, sans-serif; /* next/font, loaded in layout.tsx */
+  --radius-control: 0.625rem; /* inputs, graph nodes (10px) */
+  --radius-card: 1rem;        /* cards, panels (16px) */
+  --radius-chip: 0.375rem;    /* chips (6px) */
+}
+
+/* Shadows are tinted purple in light, black in dark. */
+@theme {
+  --shadow-sm: 0 1px 3px light-dark(rgb(43 21 71 / 0.08), rgb(0 0 0 / 0.4));
+  --shadow-md: 0 4px 12px light-dark(rgb(43 21 71 / 0.1), rgb(0 0 0 / 0.5));
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums; /* row counts and dates line up */
+}
+
+/* In the base layer so a component's text-* / font-* utilities still win. */
+@layer base {
+  h1, h2, h3, h4 { font-weight: 600; }
+  h1 { font-weight: 700; letter-spacing: -0.02em; }
 }
 
 /* Every interactive control gets the same visible focus ring (keyboard focus only). */
 :focus-visible,
 input:focus-within /* date inputs focus an inner field, which :focus-visible does not report on the input */ {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 

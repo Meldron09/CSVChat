@@ -26,10 +26,10 @@ export function UploadPanel({ chatId }: { chatId: string }) {
             setOver(false);
             if (!busy) upload(Array.from(e.dataTransfer.files));
           }}
-          className={`${box} cursor-pointer has-[:disabled]:cursor-default has-[:disabled]:opacity-60 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${over ? "border-accent bg-background" : "border-border-strong"}`}
+          className={`${box} cursor-pointer has-[:disabled]:cursor-default has-[:disabled]:opacity-60 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand ${over ? "border-brand bg-background" : "border-border-strong"}`}
         >
           <span>
-            Drop CSV files here or <span className="font-medium text-accent underline">choose files</span>
+            Drop CSV files here or <span className="font-medium text-brand underline">choose files</span>
           </span>
           <input
             type="file"
@@ -55,11 +55,11 @@ export function UploadPanel({ chatId }: { chatId: string }) {
       </div>
       {busy && (
         <p role="status" className="flex items-center gap-2 text-sm text-muted">
-          <span aria-hidden className="size-4 shrink-0 animate-spin rounded-full border-2 border-border border-t-accent" />
+          <span aria-hidden className="size-4 shrink-0 animate-spin rounded-full border-2 border-border border-t-brand" />
           <span className="break-all">Cleaning and loading {processing.join(", ")}…</span>
         </p>
       )}
-      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger-text">{error}</p>}
       <NotesEditor chatId={chatId} notes={notes} setNotes={setNotes} disabled={busy} />
       <TablesList reports={reports} profile={profile} />
     </section>

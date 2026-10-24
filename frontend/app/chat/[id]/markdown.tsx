@@ -14,7 +14,7 @@ const components = {
   h4: (p: ComponentProps<"h4">) => <h4 {...p} className="font-semibold" />,
   h5: (p: ComponentProps<"h5">) => <h5 {...p} className="font-semibold" />,
   h6: (p: ComponentProps<"h6">) => <h6 {...p} className="font-semibold" />,
-  a: (p: ComponentProps<"a">) => <a {...p} target="_blank" rel="noopener noreferrer" className="text-accent underline" />,
+  a: (p: ComponentProps<"a">) => <a {...p} target="_blank" rel="noopener noreferrer" className="text-brand underline" />,
   code: (p: ComponentProps<"code">) => <code {...p} className="rounded-control bg-background px-1 text-xs" />,
   pre: (p: ComponentProps<"pre">) => <pre {...p} className="overflow-x-auto rounded-control bg-background p-2 text-xs" />,
   blockquote: (p: ComponentProps<"blockquote">) => <blockquote {...p} className="border-l-2 border-border-strong pl-3 text-muted" />,

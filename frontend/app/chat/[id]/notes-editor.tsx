@@ -56,7 +56,7 @@ export function NotesEditor({
       />
       {status === "saving" && <p role="status" className="text-sm text-muted">Saving notes…</p>}
       {status === "saved" && <p role="status" className="text-sm text-muted">Notes saved. Applies to your next question.</p>}
-      {typeof status === "object" && status && <p role="alert" className="text-sm text-danger">Notes not saved: {status.failed}. Click out of the field to retry.</p>}
+      {typeof status === "object" && status && <p role="alert" className="text-sm text-danger-text">Notes not saved: {status.failed}. Click out of the field to retry.</p>}
     </>
   );
 }

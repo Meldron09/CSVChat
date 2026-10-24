@@ -24,7 +24,7 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
         initialNotes={chat.dataset_notes ?? ""}
         initialTurnCount={chat.transcript.length}
       >
-        <div className="flex h-dvh flex-col">
+        <div className="flex h-[calc(100dvh-0.375rem)] flex-col">
           <Header chatId={chat.id} />
           <main className="flex min-h-0 flex-1">
             <DatasetSidebar>

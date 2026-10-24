@@ -31,3 +31,20 @@ export async function ask(page: Page, text: string) {
   await question(page).press("Enter");
   await expect(question(page)).toBeEnabled();
 }
+
+/**
+ * Screenshot harness (spec `screenshots.spec.ts`, run with SHOTS=1 SHOTS_DIR=...): saves `<SHOTS_DIR>/<stage>/<name>-<theme>-<width>.png`
+ * for light/dark x 1440/390 of whatever the page currently shows. Screenshots are never committed.
+ */
+export async function shoot(page: Page, stage: string, name: string) {
+  const dir = process.env.SHOTS_DIR;
+  if (!dir) throw new Error("SHOTS_DIR is not set");
+  for (const scheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    for (const [width, height] of [[1440, 900], [390, 844]]) {
+      await page.setViewportSize({ width, height });
+      await page.waitForTimeout(400); // let colour transitions settle
+      await page.screenshot({ path: `${dir}/${stage}/${name}-${scheme}-${width}.png` });
+    }
+  }
+}

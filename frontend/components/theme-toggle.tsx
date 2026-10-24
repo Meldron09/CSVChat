@@ -34,7 +34,7 @@ export function ThemeToggle() {
   return (
     <div role="group" aria-label="Theme" className="flex gap-1">
       {CHOICES.map((c) => (
-        <Button key={c} variant={choice === c ? "primary" : "secondary"} aria-pressed={choice === c} onClick={() => pick(c)} className="px-3 py-1 capitalize">
+        <Button key={c} variant={choice === c ? "brand" : "secondary"} aria-pressed={choice === c} onClick={() => pick(c)} className="px-3 py-1 capitalize">
           {c}
         </Button>
       ))}

@@ -60,7 +60,7 @@ export function TurnView({ turn, showAsOf, onRetry, retryDisabled }: { turn: Tur
   const answer = turn.text && <Card as="div" className="px-3 py-2"><AnswerMarkdown>{turn.text}</AnswerMarkdown></Card>;
   return (
     <article className="flex flex-col gap-3 text-sm" aria-label={`Question: ${turn.question}`}>
-      <p className="self-end rounded-card bg-accent px-3 py-2 text-accent-foreground">
+      <p className="self-end rounded-card bg-brand px-3 py-2 text-brand-foreground">
         {turn.question}
         {showAsOf && turn.asOfDate && <span className="ml-2 rounded-full border border-current px-2 text-xs opacity-80">as of {turn.asOfDate}</span>}
       </p>
@@ -79,7 +79,7 @@ export function TurnView({ turn, showAsOf, onRetry, retryDisabled }: { turn: Tur
       )}
       {!running && (turn.steps.length > 0 || turn.queries.length > 0) && <HowAnswered turn={turn} />}
       {turn.status === "error" && (
-        <div role="alert" className="flex flex-wrap items-center gap-3 text-danger">
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-danger-text">
           <p>This question failed: {turn.error}</p>
           <Button variant="secondary" onClick={onRetry} disabled={retryDisabled}>Retry</Button>
         </div>

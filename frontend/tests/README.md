@@ -96,3 +96,7 @@ Layout at wide (default 1280px) and phone (`test.use({ viewport })`, 390px) widt
 ## Turn tests (`turn.spec.ts`)
 
 Running (one status line; streamed text is `aria-hidden` inside the Transcript's `aria-live="polite"` region), done (Markdown, Charts, closed "How this was answered" disclosure grouped by task), failed + Retry (new Turn, failed one stays), the As-of Date chip rule, Markdown/plain-text rendering and resume after reload. Keywords: `markdown`, `plain`, `tasks`, `slow`, `fail`.
+
+## Screenshots (`screenshots.spec.ts`)
+
+Visual-review harness for the redesign, skipped unless `SHOTS=1`: `SHOTS=1 SHOTS_DIR=/some/dir SHOTS_STAGE=stage-N npx playwright test screenshots` writes light/dark x 1440/390 PNGs of each state to `$SHOTS_DIR/<stage>/` (helper `shoot` in `helpers.ts`). Nothing is asserted and the images are not committed.

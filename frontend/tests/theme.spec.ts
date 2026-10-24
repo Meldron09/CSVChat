@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { openChat } from "./helpers";
 
 const LIGHT_BG = "rgb(255, 255, 255)";
-const DARK_BG = "rgb(10, 10, 10)";
+const DARK_BG = "rgb(22, 11, 38)";
 
 const html = (page: Page) => page.locator("html");
 const background = (page: Page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);

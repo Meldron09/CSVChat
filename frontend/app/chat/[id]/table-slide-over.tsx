@@ -61,7 +61,7 @@ function Report({ report: r }: { report: CleaningReport }) {
     <Card as="article" className="text-sm" aria-label={`Cleaning Report for ${r.table}`}>
       <h3 className="font-semibold">
         Cleaning Report <span className="font-normal text-muted">({r.filename})</span>
-        {r.replaced && <span className="ml-2 text-xs text-warning">replaced earlier Table</span>}
+        {r.replaced && <span className="ml-2 text-xs text-warning-foreground">replaced earlier Table</span>}
       </h3>
       <p className="mt-1 text-muted">
         {r.rows_loaded.toLocaleString()} rows loaded of {r.rows_read.toLocaleString()} read ·{" "}
