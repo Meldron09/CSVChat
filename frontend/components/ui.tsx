@@ -4,20 +4,18 @@ const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ")
 
 const control = "rounded-control border border-border-strong bg-background text-foreground placeholder:text-muted disabled:opacity-60";
 
-/** `primary` is the accent-filled action; `secondary` is outlined. */
-export function Button({ variant = "primary", className, ...props }: ComponentProps<"button"> & { variant?: "primary" | "secondary" }) {
-  return (
-    <button
-      {...props}
-      className={cx(
-        "rounded-control border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60",
-        variant === "primary"
-          ? "border-accent bg-accent text-accent-foreground enabled:hover:brightness-110"
-          : "border-border-strong bg-background text-foreground enabled:hover:bg-surface",
-        className,
-      )}
-    />
+/** Button styling, also for links that look like buttons. `primary` is the accent-filled action; `secondary` is outlined. */
+export const buttonClass = (variant: "primary" | "secondary", className?: string) =>
+  cx(
+    "inline-block rounded-control border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60",
+    variant === "primary"
+      ? "border-accent bg-accent text-accent-foreground enabled:hover:brightness-110"
+      : "border-border-strong bg-background text-foreground enabled:hover:bg-surface",
+    className,
   );
+
+export function Button({ variant = "primary", className, ...props }: ComponentProps<"button"> & { variant?: "primary" | "secondary" }) {
+  return <button {...props} className={buttonClass(variant, className)} />;
 }
 
 /** A bordered surface; `as` picks the element (article, section, figure, ...). */
