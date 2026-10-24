@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:real": "E2E_REAL_STACK=1 BACKEND_URL=${BACKEND_URL:-http://localhost:8000} playwright test real-stack"
   },
   "dependencies": {
     "next": "16.4.2",
