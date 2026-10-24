@@ -42,6 +42,10 @@ Open `/` in `beforeEach`; each visit creates a fresh Chat in the fake, so tests 
 sees. `GET http://127.0.0.1:4010/__test/calls` returns every `METHOD /path` the fake has served (e.g. to count `POST /chats`).
 The fake keeps state per Chat and records finished Turns, so reloading shows the Transcript like the real backend.
 
+`tables.spec.ts` needs no extra fake scenarios: the sample's `orders` Table (97 rows, IQR outlier flag, 3 duplicates removed) is
+the flagged one; an uploaded CSV with a repeated line gives a "1 flagged" Table; a single upload has no relationships (the
+empty message); `orders` and `customers` together give one relationship.
+
 ## Scenario triggers
 
 Questions (`POST /chats/{id}/messages`), matched case-insensitively anywhere in the question. Default: steps, SQL, streamed

@@ -43,7 +43,7 @@ test.describe("phone width", () => {
     await page.getByRole("button", { name: "Dataset", exact: true }).click();
     await expect(page.getByRole("button", { name: "Load sample dataset" })).toBeVisible();
     await page.getByRole("button", { name: "Load sample dataset" }).click();
-    await expect(page.getByLabel("Cleaning Report for orders")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^orders\b/ })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 
