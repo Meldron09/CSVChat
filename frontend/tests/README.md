@@ -19,6 +19,23 @@ servers are never reused, so a running compose stack is never touched. Report: `
 Against another backend (e.g. the real compose stack): `BACKEND_URL=http://localhost:8000 npm run test:e2e` skips the fake
 and points the frontend at that URL (only suitable for tests written for a real backend).
 
+## Real-stack smoke test
+
+`real-stack.spec.ts` loads the sample dataset and asks one question against the real backend and language model, expecting
+an Answer. It is skipped (reported as skipped, not failed) unless `E2E_REAL_STACK=1`, so `npm run test:e2e` never calls the
+model. To run it, start the stack (`docker compose up --build` from the repo root; the model, Ollama by default, must be
+reachable) and then:
+
+```sh
+cd frontend
+npm run test:e2e:real                                     # backend at http://localhost:8000
+BACKEND_URL=http://localhost:9000 npm run test:e2e:real   # another address
+```
+
+It sets `E2E_REAL_STACK=1` and `BACKEND_URL`, runs only this spec, and still starts its own frontend on 3100. It creates a
+real Chat in the stack's database and can take minutes (timeout 5 min); the Answer is recognised by the backend's closing
+"(As-of Date used: ...)" line, not by the model's wording.
+
 ## Writing tests
 
 Open `/` in `beforeEach`; each visit creates a fresh Chat in the fake, so tests are independent. Assert only on what a user
