@@ -65,6 +65,14 @@ A Sub-agent that merges all results into the final answer shown to the user.
 What the user receives for one question: text, one or more Charts, or both, as the question warrants.
 _Avoid_: Reply, output
 
+**Turn**:
+One question a user asks in a Chat together with what came back: an Answer, or an error if it failed. A failed Turn keeps its question and error and has no Answer.
+_Avoid_: Message, exchange, request
+
+**Transcript**:
+The ordered Turns of a Chat, kept so the Chat can be resumed.
+_Avoid_: History, log
+
 **Chart Spec**:
 A declarative description of a chart (type, axes, series, title, data) that the frontend draws. Never code.
 _Avoid_: Figure, image, plot code
